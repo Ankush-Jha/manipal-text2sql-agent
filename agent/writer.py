@@ -1,6 +1,7 @@
 """Arctic-Text2SQL-R1 writer. The template below is copied verbatim from the OmniSQL repo
 (README, "Prompt Template"). Do NOT edit it: the model was trained on this format.
 Hints go inside {question}; schema DDL (with value/description comments) goes in {db_details}."""
+import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -47,13 +48,31 @@ def extract_sql(text: str) -> str | None:
 
 
 def _one(url, prompt, temperature, max_tokens, timeout):
-    r = httpx.post(
-        f"{url}/chat/completions", timeout=timeout,
+    """Streams the completion and disconnects right after the SQL code block closes.
+    The model reliably emits exactly one fenced block then rambles for hundreds of
+    unused tokens (extract_sql only ever reads the last block); cutting the
+    connection there stops the server from generating them."""
+    chunks = []
+    fences = 0
+    with httpx.stream(
+        "POST", f"{url}/chat/completions", timeout=timeout,
         json={"model": "writer", "messages": [{"role": "user", "content": prompt}],
-              "temperature": temperature, "max_tokens": max_tokens},
-    )
-    r.raise_for_status()
-    return extract_sql(r.json()["choices"][0]["message"]["content"])
+              "temperature": temperature, "max_tokens": max_tokens, "stream": True},
+    ) as r:
+        r.raise_for_status()
+        for line in r.iter_lines():
+            if not line.startswith("data: "):
+                continue
+            payload = line[len("data: "):]
+            if payload == "[DONE]":
+                break
+            delta = json.loads(payload)["choices"][0]["delta"].get("content", "")
+            if delta:
+                chunks.append(delta)
+                fences += delta.count("```")
+                if fences >= 2:
+                    break
+    return extract_sql("".join(chunks))
 
 
 def sample(url: str, prompt: str, n: int, temperature: float, max_tokens: int = 2048,

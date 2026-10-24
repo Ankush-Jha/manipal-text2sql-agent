@@ -71,3 +71,19 @@ def rewrite(question: str, judge_url: str | None = None) -> tuple[str, str]:
     text = r.json()["choices"][0]["message"]["content"]
     field = lambda k: next((ln.split(":", 1)[1].strip() for ln in text.splitlines() if ln.upper().startswith(k + ":")), "")
     return field("REWRITTEN") or question, field("QUANTITY") or "NONE"
+
+
+def chat_json(prompt: str, judge_url: str | None = None, max_tokens: int = 220) -> dict:
+    """One short Qwen3-8B call that must answer with a JSON object; {} when it does not."""
+    import json
+    import re
+    url = judge_url or os.getenv("JUDGE_URL", "http://localhost:8082/v1")
+    r = httpx.post(f"{url}/chat/completions", timeout=90, json={
+        "model": "judge", "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens, "temperature": 0,
+        "chat_template_kwargs": {"enable_thinking": False}})
+    r.raise_for_status()
+    m = re.search(r"\{.*\}", r.json()["choices"][0]["message"]["content"], re.S)
+    try:
+        return json.loads(m.group(0)) if m else {}
+    except json.JSONDecodeError:
+        return {}

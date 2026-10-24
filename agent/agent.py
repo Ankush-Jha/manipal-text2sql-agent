@@ -10,10 +10,11 @@ from pathlib import Path
 import sqlglot
 from sqlglot import exp
 
-from agent import confidence, dates, decider as decider_mod, rules as rules_mod, writer
+from agent import clarify, confidence, conversation, dates, decider as decider_mod, rules as rules_mod, sanitize, schema_state, writer
 from agent.checks import run_checks
 from agent.hints import hint_lines, hint_text
 from agent.linker import link
+from agent.literals import repair_literals
 from agent.profiler import profile_db
 from agent.runner import run_candidates
 
@@ -41,7 +42,7 @@ def schema_ddl(db_path, tables: list[str]) -> str:
     c = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
         rows = c.execute("select name, sql from sqlite_master where type='table' and sql is not null").fetchall()
-        return "\n\n".join(s for n, s in rows if n in tables)
+        return sanitize.clean_ddl("\n\n".join(s for n, s in rows if n in tables))
     finally:
         c.close()
 
@@ -66,11 +67,12 @@ def default_deps():
         "sample": lambda prompt, n, temp, on_each=None: writer.sample(wurl, prompt, n, temp, on_each=on_each),
         "decide": lambda q, opts, ctx="", desc=None: decider_mod.decide(q, opts, ctx, kind=os.getenv("DECIDER", "local"), descriptions=desc),
         "rewrite": decider_mod.rewrite,
+        "chat_json": decider_mod.chat_json,
     }
 
 
 def ask(question: str, db_id: str, mode: str = "product", n_samples: int = 5, temperature: float = 0.8,
-        hint: str = "", emit=None, deps: dict | None = None, db_root: Path | None = None, choice: str | None = None, rounds: int = 0) -> dict:
+        hint: str = "", emit=None, deps: dict | None = None, db_root: Path | None = None, choice: str | None = None, rounds: int = 0, drift: dict | None = None, history: list[dict] | None = None) -> dict:
     """choice: a rule id the user picked after a clarification question. rounds: clarifications already asked;
     the user's typed answers are appended to `question`."""
     deps = deps or default_deps()
@@ -88,13 +90,29 @@ def ask(question: str, db_id: str, mode: str = "product", n_samples: int = 5, te
         return value
 
     def result(status, **kw):
-        base = dict(status=status, answer_rows=[], columns=[], truncated=False, sql=None, candidates=[],
+        base = dict(status=status, interpreted_as=question if rw["depends"] else None, answer_rows=[], columns=[], truncated=False, sql=None, candidates=[],
                     confidence=0.0, reason="", options=[], signals={}, threshold=None, mode=mode,
                     decider=os.getenv("DECIDER", "local"), trace=trace)
         base.update(kw)
         return base
 
+    # follow-up: the unchanged writer sees one standalone question; history = [{"standalone", "sql"}, ...] of earlier turns
+    asked, rw = question, {"depends": False, "drop": []}
+    if history:
+        def do_followup():
+            r = conversation.rewrite(asked, history, deps.get("chat_json"))
+            return r, r
+        rw = step("followup", do_followup)
+        question = rw["standalone"]
     profile = profile_db(db_id, db_root)
+    # drift = {"from": profile the agent knew, "mode": "stale" | "repair"}; stale reproduces uninvalidated caches
+    dmap, drift_lines = None, []
+    if drift and drift["mode"] == "stale":
+        profile = drift["from"]
+    elif drift:
+        dmap = schema_state.derive_map(drift["from"], profile)
+        profile = schema_state.carry_over(profile, drift["from"], dmap)
+        drift_lines = schema_state.migration_hints(dmap)
     sig: dict = {"triage_ok": 1.0, "judge_yes": 0.5}
 
     def do_link():
@@ -107,6 +125,7 @@ def ask(question: str, db_id: str, mode: str = "product", n_samples: int = 5, te
         lines = hint_lines(lk, profile)
         return lines, {"lines": lines}
     lines = step("hints", do_hints)
+    lines = drift_lines + lines
 
     # business rules + time windows: product mode only, so benchmark numbers stay comparable with the plain model
     rules_res = {"applied": [], "lines": [], "windows": []}
@@ -158,12 +177,34 @@ def ask(question: str, db_id: str, mode: str = "product", n_samples: int = 5, te
     sqls = step("write", do_write)
 
     def repair(sql, err):
-        p = writer.build_prompt(ddl, f"{question}\nA previous attempt:\n{sql}\nfailed with: {err}\nWrite a corrected query.", full_hint)
+        if dmap and re.search(r"no such (table|column)", str(err)):  # old names in new schema: rewrite by the map, no model call
+            try:
+                fixed = schema_state.rewrite_sql(sql, dmap)
+                if fixed != sql:
+                    return fixed
+            except Exception:
+                pass
+        p = writer.build_prompt(ddl, f"{question}\nA previous attempt:\n{sql}\nfailed with: {sanitize.error_class(err)}\nWrite a corrected query.", full_hint)
         return sample(p, 1, 0.0)[0]
 
+    greedy_tiebreak = os.getenv("GREEDY_TIEBREAK", "0") == "1"  # experiment switch, off unless measured to help
+
+    # literals the model invented ('Blonde', '2016/6/23') that exist nowhere in their column: fixed without a model.
+    # Measured: 0 false positives on 500 gold queries; +5 correct on both the plain and the agent predictions.
+    literal_fixes: list[dict] = []
+    if os.getenv("LITERAL_REPAIR", "1") == "1":
+        fixed_sqls = []
+        for i, sql_i in enumerate(sqls):
+            new_sql, fx = repair_literals(sql_i, db_path, profile)
+            applied = [f for f in fx if f["kind"] in ("snap", "date")]
+            if applied:
+                literal_fixes.append({"attempt": i, "fixes": applied})
+            fixed_sqls.append(new_sql)
+        sqls = fixed_sqls
+
     def do_run():
-        r = run_candidates(db_path, sqls, repair)
-        return r, {"groups": r["groups"], "candidates": r["candidates"]}
+        r = run_candidates(db_path, sqls, repair, tiebreak=(lambda: sample(prompt, 1, 0.0)[0]) if greedy_tiebreak else None)
+        return r, {"groups": r["groups"], "candidates": r["candidates"], "tiebreak": r["tiebreak"], "literal_fixes": literal_fixes}
     run = step("run", do_run)
     cand_view = [{"sql": c["sql"], "error": c["error"], "repaired": c["repaired"], "rows": c["rows"],
                   "group": next((gi for gi, g in enumerate(run["groups"]) if c["sql"] in g["sqls"]), None)}
@@ -174,7 +215,20 @@ def ask(question: str, db_id: str, mode: str = "product", n_samples: int = 5, te
 
     if run["winner_sql"] is None:
         return result("refused", reason="None of the attempts produced a runnable query.", candidates=cand_view, signals=sig)
+    if mode == "product" and rounds == 0 and not choice:  # at most one question back per user question
+        amb = step("clarify", lambda: (lambda a: (a, {"ask": bool(a)}))(clarify.gate(run, question, deps["decide"])))
+        if amb:
+            sig["ambiguous_readings"] = len(amb["options"])
+            return result("needs_clarification", candidates=cand_view, signals=sig, interpretations=amb["options"],
+                          options=[o["label"] for o in amb["options"]],
+                          reason="Your question can be read two ways, and the database gives different answers. Which did you mean? You can also type your own.")
     res = run["winner_result"]
+    if rw["depends"] and len(run["reps"]) > 1:  # prefer the result group that kept the earlier filters
+        kept = conversation.kept_constraints(history[-1].get("sql"), rw["drop"])
+        k = conversation.pick(run["reps"], kept)
+        if k:
+            run = {**run, "winner_sql": run["reps"][k][0], "winner_result": run["reps"][k][1]}
+            res = run["winner_result"]
 
     def do_checks():
         base_rows, data_range = check_context(run["winner_sql"], profile)
@@ -191,7 +245,7 @@ def ask(question: str, db_id: str, mode: str = "product", n_samples: int = 5, te
     def do_judge():
         p = deps["decide"](question, ["yes", "no", "ambiguous"],
                            ("Agreed definitions:\n" + "\n".join(rules_res["lines"]) + "\n" if rules_res["lines"] else "")
-                           + f"SQL: {run['winner_sql']}\nFirst rows: {res.rows[:5]}\nDoes this result correctly answer the question?")
+                           + f"SQL: {run['winner_sql']}\n{sanitize.judge_view(res.columns, res.rows)}\nDoes this result correctly answer the question?")
         return p, {"probs": p}
     sig["judge_yes"] = step("judge", do_judge)["yes"]
     loaded = confidence.load()

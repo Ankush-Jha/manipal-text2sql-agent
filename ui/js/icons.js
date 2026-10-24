@@ -11,6 +11,7 @@ export const ICONS = {
   table: s(`<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M3.5 9.5h17M9.5 9.5v10"/>`),
   more: s(`<circle cx="6" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18" cy="12" r="1.2" fill="currentColor"/>`),
   shield: s(`<path d="M12 3.5 19 6v5.5c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6Z"/><path d="m9.2 12 2 2 3.8-4"/>`),
+  lock: s(`<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/>`),
   plus: s(`<path d="M12 5v14M5 12h14"/>`, `stroke-width="1.8"`),
   keyboard: s(`<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M7 10h.01M10.5 10h.01M14 10h.01M17.5 10h.01M8 14.5h8"/>`),
   chevronDown: s(`<path d="m6 9 6 6 6-6"/>`),

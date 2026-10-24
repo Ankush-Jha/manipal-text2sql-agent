@@ -6,6 +6,8 @@ import re
 import sqlite3
 from pathlib import Path
 
+from agent.schema_state import schema_hash
+
 ROOT = Path(__file__).resolve().parent.parent
 DIRTY = {"", "n/a", "na", "none", "null", "-", "--", "unknown", "?", "nan"}
 DATE_FORMATS = {
@@ -62,14 +64,15 @@ def profile_column(conn, table: str, col: str, ctype: str) -> dict:
 
 def profile_db(db_id: str, db_root: Path | None = None, force: bool = False) -> dict:
     db_root = db_root or ROOT / "data/dev_databases"
-    cache = ROOT / f"cache/profile_{db_id}.json"
+    sh = schema_hash(db_root / db_id / f"{db_id}.sqlite")
+    cache = ROOT / f"cache/profile_{db_id}_{sh}.json"
     if cache.exists() and not force:
         return json.loads(cache.read_text())
     db_dir = db_root / db_id
     desc = read_descriptions(db_dir)
     conn = sqlite3.connect(f"file:{db_dir / (db_id + '.sqlite')}?mode=ro", uri=True)
     conn.text_factory = lambda b: b.decode("utf-8", errors="replace")
-    prof = {"db_id": db_id, "tables": {}}
+    prof = {"db_id": db_id, "schema_hash": sh, "tables": {}}
     for (table,) in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
         cols = {}
         for _, col, ctype, *_ in conn.execute(f'PRAGMA table_info("{table}")').fetchall():

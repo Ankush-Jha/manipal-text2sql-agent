@@ -1,0 +1,29 @@
+{
+  "db_id": "california_schools",
+  "roles": {
+    "public_viewer": {
+      "description": "Anyone: open schools only, no contact details, no SAT scores",
+      "tables": {
+        "schools": {"except": ["Phone", "Ext", "Street", "StreetAbr", "MailStreet", "MailStrAbr", "MailCity", "MailZip", "MailState", "AdmFName1", "AdmLName1", "AdmEmail1", "AdmFName2", "AdmLName2", "AdmEmail2", "AdmFName3", "AdmLName3", "AdmEmail3", "LastUpdate"],
+                    "where": "StatusType = 'Active'"},
+        "frpm": {"where": "CDSCode IN (SELECT CDSCode FROM schools WHERE StatusType = 'Active')"}
+      }
+    },
+    "county_analyst": {
+      "description": "Alameda County analyst: Alameda rows only, no personal contact details",
+      "tables": {
+        "schools": {"except": ["Phone", "Ext", "AdmEmail1", "AdmEmail2", "AdmEmail3"], "where": "County = 'Alameda'"},
+        "frpm": {"where": "\"County Name\" = 'Alameda'"},
+        "satscores": {"where": "cname = 'Alameda'"}
+      }
+    },
+    "state_auditor": {
+      "description": "State auditor: every school and table, but no personal e-mail or phone numbers",
+      "tables": {
+        "schools": {"except": ["Phone", "Ext", "AdmEmail1", "AdmEmail2", "AdmEmail3"]},
+        "frpm": {},
+        "satscores": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,450 @@
+[
+  {
+    "conv_id": "cs_001", "db_id": "california_schools",
+    "turns": [
+      {"question": "How many schools with an average score in Math greater than 400 in the SAT test have been opened?", "standalone": "How many schools with an average score in Math greater than 400 in the SAT test have been opened?", "gold_sql": "SELECT COUNT(DISTINCT T2.School) FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F' AND T1.AvgScrMath > 400", "type": "root"},
+      {"question": "now only in Alameda county", "standalone": "How many schools with an average score in Math greater than 400 in the SAT test that are not virtual and are in Alameda county have been opened?", "gold_sql": "SELECT COUNT(DISTINCT T2.School) FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F' AND T1.AvgScrMath > 400 AND T2.County = 'Alameda'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what's the average of those scores instead of the count", "standalone": "What is the average Math SAT score of non-virtual schools in Alameda county with a Math SAT score greater than 400?", "gold_sql": "SELECT AVG(T1.AvgScrMath) FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F' AND T1.AvgScrMath > 400 AND T2.County = 'Alameda'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_002", "db_id": "california_schools",
+    "turns": [
+      {"question": "List the names and streets of schools with more than 30 difference in enrollment between K-12 and ages 5-17.", "standalone": "List the names and streets of schools with more than 30 difference in enrollment between K-12 and ages 5-17.", "gold_sql": "SELECT T1.School, T1.Street FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE ABS(T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 30", "type": "root"},
+      {"question": "and their cities instead of streets", "standalone": "List the names and cities of schools with more than 30 difference in enrollment between K-12 and ages 5-17.", "gold_sql": "SELECT T1.School, T1.City FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE ABS(T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 30", "type": "ellipsis", "depends_on_turn": 1},
+      {"question": "make that difference over 100 instead", "standalone": "List the names and cities of schools with more than 100 difference in enrollment between K-12 and ages 5-17.", "gold_sql": "SELECT T1.School, T1.City FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE ABS(T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 100", "type": "replace_value", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_003", "db_id": "california_schools",
+    "turns": [
+      {"question": "State the names and full communication address of high schools in Monterey which have a free meal count of over 800 for ages 5-17.", "standalone": "State the names and full communication address of high schools in Monterey which have a free meal count of over 800 for ages 5-17.", "gold_sql": "SELECT T1.`School Name`, T2.Street, T2.City, T2.State, T2.Zip FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Monterey' AND T1.`Free Meal Count (Ages 5-17)` > 800 AND T1.`School Type` = 'High Schools (Public)'", "type": "root"},
+      {"question": "which of those have more than 1000 free meal count", "standalone": "Among high schools in Monterey with a free meal count of over 800 for ages 5-17, which ones have a free meal count of over 1000 for ages 5-17?", "gold_sql": "SELECT T1.`School Name`, T2.Street, T2.City, T2.State, T2.Zip FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Monterey' AND T1.`Free Meal Count (Ages 5-17)` > 800 AND T1.`School Type` = 'High Schools (Public)' AND T1.`Free Meal Count (Ages 5-17)` > 1000", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "never mind the 1000 part, just how many schools match the Monterey criteria", "standalone": "How many high schools in Monterey have a free meal count of over 800 for ages 5-17?", "gold_sql": "SELECT COUNT(*) FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Monterey' AND T1.`Free Meal Count (Ages 5-17)` > 800 AND T1.`School Type` = 'High Schools (Public)'", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_004", "db_id": "california_schools",
+    "turns": [
+      {"question": "Please list the codes of the schools with a total enrollment of over 500.", "standalone": "Please list the codes of the schools with a total enrollment of over 500.", "gold_sql": "SELECT T2.CDSCode FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.`Enrollment (K-12)` + T2.`Enrollment (Ages 5-17)` > 500", "type": "root"},
+      {"question": "how many of those are there", "standalone": "How many schools have a total enrollment (K-12 plus ages 5-17) of over 500?", "gold_sql": "SELECT COUNT(*) FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.`Enrollment (K-12)` + T2.`Enrollment (Ages 5-17)` > 500", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "what about schools in general, how many total", "standalone": "How many schools are in the database in total?", "gold_sql": "SELECT COUNT(*) FROM schools", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_005", "db_id": "california_schools",
+    "turns": [
+      {"question": "Name schools in Riverside which the average of average math score for SAT is greater than 400, what is the funding type of these schools?", "standalone": "Name schools in Riverside where the average Math SAT score is greater than 400, and give the funding type of these schools.", "gold_sql": "SELECT T1.sname, T2.`Charter Funding Type` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN schools AS T3 ON T1.cds = T3.CDSCode WHERE T3.County = 'Riverside' AND T1.AvgScrMath > 400", "type": "root"},
+      {"question": "those but for San Bernardino county", "standalone": "Name schools in San Bernardino county where the average Math SAT score is greater than 400, and give the funding type of these schools.", "gold_sql": "SELECT T1.sname, T2.`Charter Funding Type` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN schools AS T3 ON T1.cds = T3.CDSCode WHERE T3.County = 'San Bernardino' AND T1.AvgScrMath > 400", "type": "coref", "depends_on_turn": 1},
+      {"question": "only the ones with a score over 500 this time", "standalone": "Name schools in San Bernardino county where the average Math SAT score is greater than 500, and give the funding type of these schools.", "gold_sql": "SELECT T1.sname, T2.`Charter Funding Type` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN schools AS T3 ON T1.cds = T3.CDSCode WHERE T3.County = 'San Bernardino' AND T1.AvgScrMath > 500", "type": "replace_value", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sc_001", "db_id": "student_club",
+    "turns": [
+      {"question": "How many meetings has the club held?", "standalone": "How many events of type Meeting has the student club held?", "gold_sql": "SELECT COUNT(*) FROM event WHERE type = 'Meeting'", "type": "root"},
+      {"question": "how many of those are still open", "standalone": "How many Meeting events with status Open has the student club held?", "gold_sql": "SELECT COUNT(*) FROM event WHERE type = 'Meeting' AND status = 'Open'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "list their names", "standalone": "List the names of Open Meeting events held by the student club.", "gold_sql": "SELECT event_name FROM event WHERE type = 'Meeting' AND status = 'Open'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sc_002", "db_id": "student_club",
+    "turns": [
+      {"question": "Who is the president of the club?", "standalone": "What are the first and last name of the member whose position is President?", "gold_sql": "SELECT first_name, last_name FROM member WHERE position = 'President'", "type": "root"},
+      {"question": "include their email too", "standalone": "What are the first name, last name, and email of the member whose position is President?", "gold_sql": "SELECT first_name, last_name, email FROM member WHERE position = 'President'", "type": "ellipsis", "depends_on_turn": 1},
+      {"question": "actually, how many members does the club have in total", "standalone": "How many members does the student club have in total?", "gold_sql": "SELECT COUNT(*) FROM member", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sc_003", "db_id": "student_club",
+    "turns": [
+      {"question": "What social events does the club have?", "standalone": "What are the names of events of type Social held by the student club?", "gold_sql": "SELECT event_name FROM event WHERE type = 'Social'", "type": "root"},
+      {"question": "only the closed ones", "standalone": "What are the names of Social events with status Closed held by the student club?", "gold_sql": "SELECT event_name FROM event WHERE type = 'Social' AND status = 'Closed'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many are there", "standalone": "How many Social events with status Closed does the student club have?", "gold_sql": "SELECT COUNT(*) FROM event WHERE type = 'Social' AND status = 'Closed'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sc_004", "db_id": "student_club",
+    "turns": [
+      {"question": "What is the total cost of all approved expenses?", "standalone": "What is the total cost of all approved expenses in the student club?", "gold_sql": "SELECT SUM(cost) FROM expense WHERE approved = 'true'", "type": "root"},
+      {"question": "only the ones over 50 dollars", "standalone": "What is the total cost of approved expenses greater than 50 dollars in the student club?", "gold_sql": "SELECT SUM(cost) FROM expense WHERE approved = 'true' AND cost > 50", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "give me the average instead", "standalone": "What is the average cost of approved expenses greater than 50 dollars in the student club?", "gold_sql": "SELECT AVG(cost) FROM expense WHERE approved = 'true' AND cost > 50", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sc_005", "db_id": "student_club",
+    "turns": [
+      {"question": "Which budget category had the highest total amount?", "standalone": "Which budget category had the highest total amount in the student club?", "gold_sql": "SELECT category FROM budget GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1", "type": "root"},
+      {"question": "show me all categories and their totals", "standalone": "Show all budget categories and their total amounts in the student club.", "gold_sql": "SELECT category, SUM(amount) FROM budget GROUP BY category", "type": "undo", "depends_on_turn": 1},
+      {"question": "how many budget categories are there", "standalone": "How many distinct budget categories does the student club have?", "gold_sql": "SELECT COUNT(DISTINCT category) FROM budget", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sc_006", "db_id": "student_club",
+    "turns": [
+      {"question": "How many members wear a Medium t-shirt?", "standalone": "How many members of the student club wear a Medium t-shirt?", "gold_sql": "SELECT COUNT(*) FROM member WHERE t_shirt_size = 'Medium'", "type": "root"},
+      {"question": "what about Large", "standalone": "How many members of the student club wear a Large t-shirt?", "gold_sql": "SELECT COUNT(*) FROM member WHERE t_shirt_size = 'Large'", "type": "coref", "depends_on_turn": 1},
+      {"question": "list their names", "standalone": "List the first and last names of members who wear a Large t-shirt.", "gold_sql": "SELECT first_name, last_name FROM member WHERE t_shirt_size = 'Large'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "fi_001", "db_id": "financial",
+    "turns": [
+      {"question": "How many loans have a status of A?", "standalone": "How many loans in the financial database have a status of A?", "gold_sql": "SELECT COUNT(*) FROM loan WHERE status = 'A'", "type": "root"},
+      {"question": "of those, how many have a duration longer than 24 months", "standalone": "How many loans with status A have a duration longer than 24 months?", "gold_sql": "SELECT COUNT(*) FROM loan WHERE status = 'A' AND duration > 24", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the average loan amount for those", "standalone": "What is the average loan amount for loans with status A and duration longer than 24 months?", "gold_sql": "SELECT AVG(amount) FROM loan WHERE status = 'A' AND duration > 24", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "fi_002", "db_id": "financial",
+    "turns": [
+      {"question": "How many male clients are there?", "standalone": "How many male clients are there in the financial database?", "gold_sql": "SELECT COUNT(*) FROM client WHERE gender = 'M'", "type": "root"},
+      {"question": "and female", "standalone": "How many female clients are there in the financial database?", "gold_sql": "SELECT COUNT(*) FROM client WHERE gender = 'F'", "type": "coref", "depends_on_turn": 1},
+      {"question": "how many total accounts are in the database", "standalone": "How many accounts are there in the financial database in total?", "gold_sql": "SELECT COUNT(*) FROM account", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "fi_003", "db_id": "financial",
+    "turns": [
+      {"question": "How many transactions are of type PRIJEM?", "standalone": "How many transactions of type PRIJEM are in the financial database?", "gold_sql": "SELECT COUNT(*) FROM trans WHERE type = 'PRIJEM'", "type": "root"},
+      {"question": "only those over 10000", "standalone": "How many PRIJEM transactions with amount greater than 10000 are in the financial database?", "gold_sql": "SELECT COUNT(*) FROM trans WHERE type = 'PRIJEM' AND amount > 10000", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is their total value", "standalone": "What is the total amount of PRIJEM transactions with amount greater than 10000?", "gold_sql": "SELECT SUM(amount) FROM trans WHERE type = 'PRIJEM' AND amount > 10000", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "fi_004", "db_id": "financial",
+    "turns": [
+      {"question": "How many loans have status B?", "standalone": "How many loans in the financial database have status B?", "gold_sql": "SELECT COUNT(*) FROM loan WHERE status = 'B'", "type": "root"},
+      {"question": "only those with amount over 100000", "standalone": "How many loans with status B have an amount greater than 100000?", "gold_sql": "SELECT COUNT(*) FROM loan WHERE status = 'B' AND amount > 100000", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the average amount for these", "standalone": "What is the average amount of loans with status B and amount greater than 100000?", "gold_sql": "SELECT AVG(amount) FROM loan WHERE status = 'B' AND amount > 100000", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "fi_005", "db_id": "financial",
+    "turns": [
+      {"question": "How many transactions have a positive balance?", "standalone": "How many transactions in the financial database have a balance greater than 0?", "gold_sql": "SELECT COUNT(*) FROM trans WHERE balance > 0", "type": "root"},
+      {"question": "now only VYDAJ type", "standalone": "How many VYDAJ transactions in the financial database have a balance greater than 0?", "gold_sql": "SELECT COUNT(*) FROM trans WHERE balance > 0 AND type = 'VYDAJ'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "forget the balance filter, just how many VYDAJ transactions total", "standalone": "How many transactions of type VYDAJ are in the financial database?", "gold_sql": "SELECT COUNT(*) FROM trans WHERE type = 'VYDAJ'", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "f1_001", "db_id": "formula_1",
+    "turns": [
+      {"question": "How many drivers have ever won a race?", "standalone": "How many distinct drivers have won at least one race (finished in position 1)?", "gold_sql": "SELECT COUNT(DISTINCT driverId) FROM results WHERE positionOrder = 1", "type": "root"},
+      {"question": "just those who won in 2010", "standalone": "How many distinct drivers won a race in the 2010 season?", "gold_sql": "SELECT COUNT(DISTINCT r.driverId) FROM results r JOIN races rc ON r.raceId = rc.raceId WHERE r.positionOrder = 1 AND rc.year = 2010", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many races were there in 2010 total", "standalone": "How many races were held in the 2010 Formula 1 season?", "gold_sql": "SELECT COUNT(*) FROM races WHERE year = 2010", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "f1_002", "db_id": "formula_1",
+    "turns": [
+      {"question": "List British drivers in Formula 1.", "standalone": "List the forename and surname of all British drivers in the Formula 1 database.", "gold_sql": "SELECT forename, surname FROM drivers WHERE nationality = 'British'", "type": "root"},
+      {"question": "how many are there", "standalone": "How many British drivers are in the Formula 1 database?", "gold_sql": "SELECT COUNT(*) FROM drivers WHERE nationality = 'British'", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "what about German drivers", "standalone": "How many German drivers are in the Formula 1 database?", "gold_sql": "SELECT COUNT(*) FROM drivers WHERE nationality = 'German'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "f1_003", "db_id": "formula_1",
+    "turns": [
+      {"question": "How many distinct circuits were used in 2010?", "standalone": "How many distinct circuits were used in the 2010 Formula 1 season?", "gold_sql": "SELECT COUNT(DISTINCT circuitId) FROM races WHERE year = 2010", "type": "root"},
+      {"question": "only the first 10 rounds", "standalone": "How many distinct circuits were used in the first 10 rounds of the 2010 Formula 1 season?", "gold_sql": "SELECT COUNT(DISTINCT circuitId) FROM races WHERE year = 2010 AND round <= 10", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many races were there in 2009 total", "standalone": "How many races were held in the 2009 Formula 1 season?", "gold_sql": "SELECT COUNT(*) FROM races WHERE year = 2009", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "f1_004", "db_id": "formula_1",
+    "turns": [
+      {"question": "How many pit stops were recorded?", "standalone": "How many pit stop records are in the Formula 1 database?", "gold_sql": "SELECT COUNT(*) FROM pitStops", "type": "root"},
+      {"question": "only those lasting less than 30 seconds", "standalone": "How many pit stops in the Formula 1 database lasted fewer than 30 seconds?", "gold_sql": "SELECT COUNT(*) FROM pitStops WHERE duration < 30", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the average duration of all pit stops", "standalone": "What is the average pit stop duration in the Formula 1 database?", "gold_sql": "SELECT AVG(duration) FROM pitStops", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "f1_005", "db_id": "formula_1",
+    "turns": [
+      {"question": "How many constructors are from the UK?", "standalone": "How many constructors in the Formula 1 database are of British nationality?", "gold_sql": "SELECT COUNT(*) FROM constructors WHERE nationality = 'British'", "type": "root"},
+      {"question": "list their names", "standalone": "List the names of British constructors in the Formula 1 database.", "gold_sql": "SELECT name FROM constructors WHERE nationality = 'British'", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "what about Italian ones", "standalone": "List the names of Italian constructors in the Formula 1 database.", "gold_sql": "SELECT name FROM constructors WHERE nationality = 'Italian'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cg_001", "db_id": "card_games",
+    "turns": [
+      {"question": "How many cards have a black border?", "standalone": "How many cards in the card games database have a black border color?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE borderColor = 'black'", "type": "root"},
+      {"question": "only those available on mtgo", "standalone": "How many cards with a black border are available on mtgo?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE borderColor = 'black' AND availability LIKE '%mtgo%'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many cards have a white border instead", "standalone": "How many cards in the card games database have a white border color?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE borderColor = 'white'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cg_002", "db_id": "card_games",
+    "turns": [
+      {"question": "List the sets in the Core Set block.", "standalone": "List the names of all sets that belong to the Core Set block in the card games database.", "gold_sql": "SELECT name FROM sets WHERE block = 'Core Set'", "type": "root"},
+      {"question": "include their release dates too", "standalone": "List the names and release dates of all sets in the Core Set block.", "gold_sql": "SELECT name, releaseDate FROM sets WHERE block = 'Core Set'", "type": "ellipsis", "depends_on_turn": 1},
+      {"question": "how many sets are there in the Core Set block", "standalone": "How many sets belong to the Core Set block in the card games database?", "gold_sql": "SELECT COUNT(*) FROM sets WHERE block = 'Core Set'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cg_003", "db_id": "card_games",
+    "turns": [
+      {"question": "How many red cards are there?", "standalone": "How many cards with color R are in the card games database?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE colors = 'R'", "type": "root"},
+      {"question": "only the ones with black borders", "standalone": "How many red cards with a black border are in the card games database?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE colors = 'R' AND borderColor = 'black'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what about blue cards with black borders", "standalone": "How many blue cards with a black border are in the card games database?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE colors = 'U' AND borderColor = 'black'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cg_004", "db_id": "card_games",
+    "turns": [
+      {"question": "How many cards are foil only?", "standalone": "How many cards in the card games database have the isFoil attribute set to 1?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE hasFoil = 1", "type": "root"},
+      {"question": "how many cards are not foil", "standalone": "How many cards in the card games database are not foil (isFoil = 0)?", "gold_sql": "SELECT COUNT(*) FROM cards WHERE hasFoil = 0", "type": "coref", "depends_on_turn": 1},
+      {"question": "how many total cards are in the database", "standalone": "How many cards are in the card games database in total?", "gold_sql": "SELECT COUNT(*) FROM cards", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cg_005", "db_id": "card_games",
+    "turns": [
+      {"question": "How many rulings are in the database?", "standalone": "How many rulings are stored in the card games database?", "gold_sql": "SELECT COUNT(*) FROM rulings", "type": "root"},
+      {"question": "how many distinct cards have at least one ruling", "standalone": "How many distinct cards in the card games database have at least one ruling?", "gold_sql": "SELECT COUNT(DISTINCT uuid) FROM rulings", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "how many sets are there total", "standalone": "How many sets are in the card games database in total?", "gold_sql": "SELECT COUNT(*) FROM sets", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tp_001", "db_id": "thrombosis_prediction",
+    "turns": [
+      {"question": "How many female patients are in the database?", "standalone": "How many female patients are in the thrombosis prediction database?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE SEX = 'F'", "type": "root"},
+      {"question": "how many of those have an SLE diagnosis", "standalone": "How many female patients in the thrombosis prediction database have been diagnosed with SLE?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE SEX = 'F' AND Diagnosis = 'SLE'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "and male patients with SLE", "standalone": "How many male patients in the thrombosis prediction database have been diagnosed with SLE?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE SEX = 'M' AND Diagnosis = 'SLE'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tp_002", "db_id": "thrombosis_prediction",
+    "turns": [
+      {"question": "How many patients are diagnosed with SLE?", "standalone": "How many patients in the thrombosis prediction database are diagnosed with SLE?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE Diagnosis = 'SLE'", "type": "root"},
+      {"question": "only female ones", "standalone": "How many female patients in the thrombosis prediction database are diagnosed with SLE?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE Diagnosis = 'SLE' AND SEX = 'F'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "forget SLE, how many female patients total", "standalone": "How many female patients are in the thrombosis prediction database?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE SEX = 'F'", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tp_003", "db_id": "thrombosis_prediction",
+    "turns": [
+      {"question": "How many lab records show GOT over 60?", "standalone": "How many laboratory records in the thrombosis prediction database have a GOT value greater than 60?", "gold_sql": "SELECT COUNT(*) FROM Laboratory WHERE GOT > 60", "type": "root"},
+      {"question": "and also GPT over 60", "standalone": "How many laboratory records have both GOT and GPT values greater than 60?", "gold_sql": "SELECT COUNT(*) FROM Laboratory WHERE GOT > 60 AND GPT > 60", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the average GOT for those records", "standalone": "What is the average GOT value for laboratory records where both GOT and GPT are greater than 60?", "gold_sql": "SELECT AVG(GOT) FROM Laboratory WHERE GOT > 60 AND GPT > 60", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tp_004", "db_id": "thrombosis_prediction",
+    "turns": [
+      {"question": "How many patients are admitted to the hospital?", "standalone": "How many patients in the database have an Admission value of '+'?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE Admission = '+'", "type": "root"},
+      {"question": "how many are outpatients", "standalone": "How many patients in the database have an Admission value of '-'?", "gold_sql": "SELECT COUNT(*) FROM Patient WHERE Admission = '-'", "type": "coref", "depends_on_turn": 1},
+      {"question": "how many patients total are in the database", "standalone": "How many patients are in the thrombosis prediction database in total?", "gold_sql": "SELECT COUNT(*) FROM Patient", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tp_005", "db_id": "thrombosis_prediction",
+    "turns": [
+      {"question": "How many lab tests had an ALP reading above 300?", "standalone": "How many laboratory records in the thrombosis prediction database have an ALP value greater than 300?", "gold_sql": "SELECT COUNT(*) FROM Laboratory WHERE ALP > 300", "type": "root"},
+      {"question": "only female patients", "standalone": "How many laboratory records from female patients have an ALP value greater than 300?", "gold_sql": "SELECT COUNT(*) FROM Laboratory AS L JOIN Patient AS P ON L.ID = P.ID WHERE L.ALP > 300 AND P.SEX = 'F'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the max ALP for female patients", "standalone": "What is the maximum ALP value recorded for female patients in the thrombosis prediction database?", "gold_sql": "SELECT MAX(L.ALP) FROM Laboratory AS L JOIN Patient AS P ON L.ID = P.ID WHERE P.SEX = 'F'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "dc_001", "db_id": "debit_card_specializing",
+    "turns": [
+      {"question": "How many SME customers are there?", "standalone": "How many customers with segment SME are in the debit card database?", "gold_sql": "SELECT COUNT(*) FROM customers WHERE Segment = 'SME'", "type": "root"},
+      {"question": "how many LAM customers are there", "standalone": "How many customers with segment LAM are in the debit card database?", "gold_sql": "SELECT COUNT(*) FROM customers WHERE Segment = 'LAM'", "type": "coref", "depends_on_turn": 1},
+      {"question": "how many SME customers pay in EUR", "standalone": "How many SME customers in the debit card database use EUR as their currency?", "gold_sql": "SELECT COUNT(*) FROM customers WHERE Segment = 'SME' AND Currency = 'EUR'", "type": "add_filter", "depends_on_turn": 1}
+    ]
+  },
+  {
+    "conv_id": "dc_002", "db_id": "debit_card_specializing",
+    "turns": [
+      {"question": "How many yearly consumption records are there?", "standalone": "How many yearly consumption records are in the debit card database?", "gold_sql": "SELECT COUNT(*) FROM yearmonth", "type": "root"},
+      {"question": "how many are there for 2012", "standalone": "How many yearly consumption records exist for the year 2012 in the debit card database?", "gold_sql": "SELECT COUNT(*) FROM yearmonth WHERE Date LIKE '2012%'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the total consumption for 2012", "standalone": "What is the total consumption recorded for the year 2012 in the debit card database?", "gold_sql": "SELECT SUM(Consumption) FROM yearmonth WHERE Date LIKE '2012%'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "dc_003", "db_id": "debit_card_specializing",
+    "turns": [
+      {"question": "How many gas stations are in the database?", "standalone": "How many gas stations are in the debit card database?", "gold_sql": "SELECT COUNT(*) FROM gasstations", "type": "root"},
+      {"question": "only those in CZE", "standalone": "How many gas stations in the debit card database are located in CZE?", "gold_sql": "SELECT COUNT(*) FROM gasstations WHERE Country = 'CZE'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many gas stations in SVK", "standalone": "How many gas stations in the debit card database are located in SVK?", "gold_sql": "SELECT COUNT(*) FROM gasstations WHERE Country = 'SVK'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "dc_004", "db_id": "debit_card_specializing",
+    "turns": [
+      {"question": "What is the highest consumption for a single record?", "standalone": "What is the highest consumption value in a single record in the debit card yearmonth table?", "gold_sql": "SELECT MAX(Consumption) FROM yearmonth", "type": "root"},
+      {"question": "what is the lowest", "standalone": "What is the lowest consumption value in a single record in the debit card yearmonth table?", "gold_sql": "SELECT MIN(Consumption) FROM yearmonth", "type": "coref", "depends_on_turn": 1},
+      {"question": "what is the average", "standalone": "What is the average consumption value in the debit card yearmonth table?", "gold_sql": "SELECT AVG(Consumption) FROM yearmonth", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "dc_005", "db_id": "debit_card_specializing",
+    "turns": [
+      {"question": "How many transactions are in the database?", "standalone": "How many transactions are recorded in the debit card database?", "gold_sql": "SELECT COUNT(*) FROM transactions_1k", "type": "root"},
+      {"question": "how many distinct customers made those transactions", "standalone": "How many distinct customers made transactions in the debit card database?", "gold_sql": "SELECT COUNT(DISTINCT CustomerID) FROM transactions_1k", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "how many transactions did they make at gas stations", "standalone": "How many transactions in the debit card database were made at gas stations (GasStationID not null and not zero)?", "gold_sql": "SELECT COUNT(*) FROM transactions_1k WHERE GasStationID IS NOT NULL AND GasStationID != 0", "type": "add_filter", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "ef_001", "db_id": "european_football_2",
+    "turns": [
+      {"question": "How many leagues are in the database?", "standalone": "How many football leagues are in the European football database?", "gold_sql": "SELECT COUNT(*) FROM League", "type": "root"},
+      {"question": "how many matches were played in total", "standalone": "How many matches were played in total in the European football database?", "gold_sql": "SELECT COUNT(*) FROM Match", "type": "topic_shift", "depends_on_turn": 1},
+      {"question": "only those from the 2015/2016 season", "standalone": "How many matches were played in the 2015/2016 season in the European football database?", "gold_sql": "SELECT COUNT(*) FROM Match WHERE season = '2015/2016'", "type": "add_filter", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "ef_002", "db_id": "european_football_2",
+    "turns": [
+      {"question": "How many teams are in the database?", "standalone": "How many teams are in the European football database?", "gold_sql": "SELECT COUNT(*) FROM Team", "type": "root"},
+      {"question": "list their names", "standalone": "List the names of all teams in the European football database.", "gold_sql": "SELECT team_long_name FROM Team", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "how many have a short name starting with A", "standalone": "How many teams in the European football database have a short name starting with A?", "gold_sql": "SELECT COUNT(*) FROM Team WHERE team_short_name LIKE 'A%'", "type": "add_filter", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "ef_003", "db_id": "european_football_2",
+    "turns": [
+      {"question": "How many players are in the database?", "standalone": "How many players are in the European football database?", "gold_sql": "SELECT COUNT(*) FROM Player", "type": "root"},
+      {"question": "how many of them are taller than 180 cm", "standalone": "How many players in the European football database are taller than 180 cm?", "gold_sql": "SELECT COUNT(*) FROM Player WHERE height > 180", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is their average weight", "standalone": "What is the average weight of players taller than 180 cm in the European football database?", "gold_sql": "SELECT AVG(weight) FROM Player WHERE height > 180", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "ef_004", "db_id": "european_football_2",
+    "turns": [
+      {"question": "What is the average home team goal count per match?", "standalone": "What is the average number of home team goals per match in the European football database?", "gold_sql": "SELECT AVG(home_team_goal) FROM Match", "type": "root"},
+      {"question": "only in the 2008/2009 season", "standalone": "What is the average number of home team goals per match in the 2008/2009 season?", "gold_sql": "SELECT AVG(home_team_goal) FROM Match WHERE season = '2008/2009'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what about away goals that season", "standalone": "What is the average number of away team goals per match in the 2008/2009 season?", "gold_sql": "SELECT AVG(away_team_goal) FROM Match WHERE season = '2008/2009'", "type": "ellipsis", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "ef_005", "db_id": "european_football_2",
+    "turns": [
+      {"question": "How many matches had more than 5 total goals?", "standalone": "How many matches in the European football database had a combined total of more than 5 goals?", "gold_sql": "SELECT COUNT(*) FROM Match WHERE home_team_goal + away_team_goal > 5", "type": "root"},
+      {"question": "only in the 2010/2011 season", "standalone": "How many matches in the 2010/2011 season had a combined total of more than 5 goals?", "gold_sql": "SELECT COUNT(*) FROM Match WHERE home_team_goal + away_team_goal > 5 AND season = '2010/2011'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "forget the goal filter, how many matches were played that season", "standalone": "How many matches were played in the 2010/2011 season?", "gold_sql": "SELECT COUNT(*) FROM Match WHERE season = '2010/2011'", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sh_001", "db_id": "superhero",
+    "turns": [
+      {"question": "How many male superheroes are there?", "standalone": "How many superheroes in the database have a male gender?", "gold_sql": "SELECT COUNT(*) FROM superhero WHERE gender_id = 1", "type": "root"},
+      {"question": "and female", "standalone": "How many superheroes in the database have a female gender?", "gold_sql": "SELECT COUNT(*) FROM superhero WHERE gender_id = 2", "type": "coref", "depends_on_turn": 1},
+      {"question": "how many superheroes are there total", "standalone": "How many superheroes are in the database in total?", "gold_sql": "SELECT COUNT(*) FROM superhero", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sh_002", "db_id": "superhero",
+    "turns": [
+      {"question": "How many superheroes are from Marvel Comics?", "standalone": "How many superheroes in the database are affiliated with Marvel Comics?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN publisher AS P ON S.publisher_id = P.id WHERE P.publisher_name = 'Marvel Comics'", "type": "root"},
+      {"question": "and DC Comics", "standalone": "How many superheroes in the database are affiliated with DC Comics?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN publisher AS P ON S.publisher_id = P.id WHERE P.publisher_name = 'DC Comics'", "type": "coref", "depends_on_turn": 1},
+      {"question": "list the names of DC superheroes", "standalone": "List the names of all superheroes affiliated with DC Comics.", "gold_sql": "SELECT S.superhero_name FROM superhero AS S JOIN publisher AS P ON S.publisher_id = P.id WHERE P.publisher_name = 'DC Comics'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sh_003", "db_id": "superhero",
+    "turns": [
+      {"question": "How many superheroes have a speed attribute greater than 90?", "standalone": "How many superheroes have a Speed attribute value greater than 90?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN hero_attribute AS HA ON S.id = HA.hero_id JOIN attribute AS A ON HA.attribute_id = A.id WHERE A.attribute_name = 'Speed' AND HA.attribute_value > 90", "type": "root"},
+      {"question": "only male ones", "standalone": "How many male superheroes have a Speed attribute value greater than 90?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN hero_attribute AS HA ON S.id = HA.hero_id JOIN attribute AS A ON HA.attribute_id = A.id WHERE A.attribute_name = 'Speed' AND HA.attribute_value > 90 AND S.gender_id = 1", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the average speed for male superheroes", "standalone": "What is the average Speed attribute value for male superheroes?", "gold_sql": "SELECT AVG(HA.attribute_value) FROM superhero AS S JOIN hero_attribute AS HA ON S.id = HA.hero_id JOIN attribute AS A ON HA.attribute_id = A.id WHERE A.attribute_name = 'Speed' AND S.gender_id = 1", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sh_004", "db_id": "superhero",
+    "turns": [
+      {"question": "How many superheroes have a good alignment?", "standalone": "How many superheroes have a Good alignment in the database?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN alignment AS A ON S.alignment_id = A.id WHERE A.alignment = 'Good'", "type": "root"},
+      {"question": "and bad alignment", "standalone": "How many superheroes have a Bad alignment in the database?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN alignment AS A ON S.alignment_id = A.id WHERE A.alignment = 'Bad'", "type": "coref", "depends_on_turn": 1},
+      {"question": "only female bad-aligned ones", "standalone": "How many female superheroes have a Bad alignment?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN alignment AS A ON S.alignment_id = A.id WHERE A.alignment = 'Bad' AND S.gender_id = 2", "type": "add_filter", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "sh_005", "db_id": "superhero",
+    "turns": [
+      {"question": "How many superheroes have blue eyes?", "standalone": "How many superheroes in the database have blue eyes?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN colour AS C ON S.eye_colour_id = C.id WHERE C.colour = 'Blue'", "type": "root"},
+      {"question": "list their names", "standalone": "List the names of superheroes with blue eyes.", "gold_sql": "SELECT S.superhero_name FROM superhero AS S JOIN colour AS C ON S.eye_colour_id = C.id WHERE C.colour = 'Blue'", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "how many have green eyes instead", "standalone": "How many superheroes in the database have green eyes?", "gold_sql": "SELECT COUNT(*) FROM superhero AS S JOIN colour AS C ON S.eye_colour_id = C.id WHERE C.colour = 'Green'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tx_001", "db_id": "toxicology",
+    "turns": [
+      {"question": "How many molecules are carcinogenic?", "standalone": "How many molecules in the toxicology database are labelled as carcinogenic (label = '+')?", "gold_sql": "SELECT COUNT(DISTINCT molecule_id) FROM molecule WHERE label = '+'", "type": "root"},
+      {"question": "and non-carcinogenic", "standalone": "How many molecules in the toxicology database are labelled as non-carcinogenic (label = '-')?", "gold_sql": "SELECT COUNT(DISTINCT molecule_id) FROM molecule WHERE label = '-'", "type": "coref", "depends_on_turn": 1},
+      {"question": "how many atoms do carcinogenic molecules have on average", "standalone": "What is the average number of atoms per carcinogenic molecule in the toxicology database?", "gold_sql": "SELECT AVG(atom_count) FROM (SELECT a.molecule_id, COUNT(*) AS atom_count FROM atom a JOIN molecule m ON a.molecule_id = m.molecule_id WHERE m.label = '+' GROUP BY a.molecule_id)", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tx_002", "db_id": "toxicology",
+    "turns": [
+      {"question": "How many atoms are in the database?", "standalone": "How many atoms are in the toxicology database?", "gold_sql": "SELECT COUNT(*) FROM atom", "type": "root"},
+      {"question": "only carbon atoms", "standalone": "How many carbon atoms (element = 'c') are in the toxicology database?", "gold_sql": "SELECT COUNT(*) FROM atom WHERE element = 'c'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many molecules contain carbon", "standalone": "How many distinct molecules contain at least one carbon atom in the toxicology database?", "gold_sql": "SELECT COUNT(DISTINCT molecule_id) FROM atom WHERE element = 'c'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tx_003", "db_id": "toxicology",
+    "turns": [
+      {"question": "How many bonds are in the database?", "standalone": "How many bonds are in the toxicology database?", "gold_sql": "SELECT COUNT(*) FROM bond", "type": "root"},
+      {"question": "only double bonds", "standalone": "How many double bonds (bond_type = '=') are in the toxicology database?", "gold_sql": "SELECT COUNT(*) FROM bond WHERE bond_type = '='", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what about single bonds", "standalone": "How many single bonds (bond_type = '-') are in the toxicology database?", "gold_sql": "SELECT COUNT(*) FROM bond WHERE bond_type = '-'", "type": "coref", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tx_004", "db_id": "toxicology",
+    "turns": [
+      {"question": "How many distinct elements appear across all atoms?", "standalone": "How many distinct elements appear across all atoms in the toxicology database?", "gold_sql": "SELECT COUNT(DISTINCT element) FROM atom", "type": "root"},
+      {"question": "list them", "standalone": "List all distinct elements that appear in atoms in the toxicology database.", "gold_sql": "SELECT DISTINCT element FROM atom", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "how many atoms are there for hydrogen", "standalone": "How many hydrogen atoms (element = 'h') are in the toxicology database?", "gold_sql": "SELECT COUNT(*) FROM atom WHERE element = 'h'", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "tx_005", "db_id": "toxicology",
+    "turns": [
+      {"question": "How many molecules have more than 20 atoms?", "standalone": "How many molecules in the toxicology database have more than 20 atoms?", "gold_sql": "SELECT COUNT(*) FROM (SELECT molecule_id, COUNT(*) AS cnt FROM atom GROUP BY molecule_id HAVING cnt > 20) t", "type": "root"},
+      {"question": "only carcinogenic ones", "standalone": "How many carcinogenic molecules in the toxicology database have more than 20 atoms?", "gold_sql": "SELECT COUNT(*) FROM (SELECT a.molecule_id, COUNT(*) AS cnt FROM atom a JOIN molecule m ON a.molecule_id = m.molecule_id WHERE m.label = '+' GROUP BY a.molecule_id HAVING cnt > 20) t", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many molecules total are carcinogenic", "standalone": "How many molecules in the toxicology database are carcinogenic (label = '+')?", "gold_sql": "SELECT COUNT(*) FROM molecule WHERE label = '+'", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cc_001", "db_id": "codebase_community",
+    "turns": [
+      {"question": "How many questions are in the database?", "standalone": "How many posts of type Question (PostTypeId = 1) are in the codebase community database?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE PostTypeId = 1", "type": "root"},
+      {"question": "only those with a score over 10", "standalone": "How many questions with a score greater than 10 are in the codebase community database?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE PostTypeId = 1 AND Score > 10", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the average score of those", "standalone": "What is the average score of questions with a score greater than 10 in the codebase community database?", "gold_sql": "SELECT AVG(Score) FROM posts WHERE PostTypeId = 1 AND Score > 10", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cc_002", "db_id": "codebase_community",
+    "turns": [
+      {"question": "How many users are in the database?", "standalone": "How many users are registered in the codebase community database?", "gold_sql": "SELECT COUNT(*) FROM users", "type": "root"},
+      {"question": "how many have a reputation over 1000", "standalone": "How many users in the codebase community database have a reputation greater than 1000?", "gold_sql": "SELECT COUNT(*) FROM users WHERE Reputation > 1000", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the highest reputation", "standalone": "What is the highest reputation score among all users in the codebase community database?", "gold_sql": "SELECT MAX(Reputation) FROM users", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cc_003", "db_id": "codebase_community",
+    "turns": [
+      {"question": "How many answers are in the database?", "standalone": "How many posts of type Answer (PostTypeId = 2) are in the codebase community database?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE PostTypeId = 2", "type": "root"},
+      {"question": "only those with a positive score", "standalone": "How many answers with a positive score are in the codebase community database?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE PostTypeId = 2 AND Score > 0", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "how many questions have no accepted answer", "standalone": "How many questions in the codebase community database have no accepted answer (AcceptedAnswerId is null)?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE PostTypeId = 1 AND AcceptedAnswerId IS NULL", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cc_004", "db_id": "codebase_community",
+    "turns": [
+      {"question": "How many badges have been awarded?", "standalone": "How many badge records are in the codebase community database?", "gold_sql": "SELECT COUNT(*) FROM badges", "type": "root"},
+      {"question": "how many distinct badge names are there", "standalone": "How many distinct badge types exist in the codebase community database?", "gold_sql": "SELECT COUNT(DISTINCT Name) FROM badges", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "how many users have received at least one badge", "standalone": "How many distinct users have received at least one badge in the codebase community database?", "gold_sql": "SELECT COUNT(DISTINCT UserId) FROM badges", "type": "ellipsis", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cc_005", "db_id": "codebase_community",
+    "turns": [
+      {"question": "How many posts have more than 5 comments?", "standalone": "How many posts in the codebase community database have a CommentCount greater than 5?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE CommentCount > 5", "type": "root"},
+      {"question": "only questions", "standalone": "How many questions (PostTypeId = 1) in the codebase community database have a CommentCount greater than 5?", "gold_sql": "SELECT COUNT(*) FROM posts WHERE PostTypeId = 1 AND CommentCount > 5", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what is the max comment count on a question", "standalone": "What is the maximum CommentCount on any question in the codebase community database?", "gold_sql": "SELECT MAX(CommentCount) FROM posts WHERE PostTypeId = 1", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  }
+]

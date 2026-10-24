@@ -181,6 +181,7 @@ export class Pipeline {
         return `<div class="node-grid"><div><span class="node-k">Ran</span><b>${ok}/${c.length}</b></div>
           <div><span class="node-k">Repaired</span><b>${rep}</b></div><div><span class="node-k">Failed</span><b>${c.length - ok}</b></div></div>
           ${c.filter((x) => x.error).slice(0, 2).map((x) => `<div class="chip bad mono" style="margin-top:8px">${esc(String(x.error).slice(0, 60))}</div>`).join("")}
+          ${literalChips(d.literal_fixes)}
           <div class="node-foot">${icon("shield")} read-only · SELECT only · 10 s · 1,000 rows</div>`;
       },
       vote: () => {
@@ -328,6 +329,15 @@ export class Pipeline {
     }
     this.wires.innerHTML = out;
   }
+}
+
+// values the model invented that were corrected to the stored spelling (no model involved)
+function literalChips(list = []) {
+  const seen = new Map();
+  for (const a of list) for (const f of a.fixes) seen.set(`${f.column}|${f.was}|${f.now}`, f);
+  if (!seen.size) return "";
+  return `<div class="node-k" style="margin-top:9px">Value fixed to the stored spelling</div><div class="chips">${[...seen.values()].slice(0, 3).map((f) =>
+    `<span class="chip good mono" title="${esc(f.column)}: ${esc(f.why)}">${esc(f.was)} → ${esc(f.now)}</span>`).join("")}</div>`;
 }
 
 function probs(p = {}, labels) {

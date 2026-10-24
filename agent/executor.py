@@ -1,4 +1,4 @@
-"""Guarded SQLite execution: read-only, single SELECT/WITH, timeout, row cap."""
+"""Guarded SQLite execution: read-only, single SELECT/WITH, authorizer, timeout, row cap."""
 import sqlite3
 import time
 from dataclasses import dataclass, field
@@ -6,6 +6,8 @@ from pathlib import Path
 
 import sqlglot
 from sqlglot import exp
+
+from agent import guard
 
 
 class GuardError(Exception):
@@ -36,20 +38,32 @@ def validate_sql(sql: str) -> str:
     return sql
 
 
-def execute(db_path: str | Path, sql: str, timeout_s: float = 10, max_rows: int = 1000) -> ExecResult:
+def execute(db_path: str | Path, sql: str, timeout_s: float = 10, max_rows: int = 1000,
+            policy: guard.Policy | None = None, audit: list | None = None, ast_check: bool = True) -> ExecResult:
+    """policy: optional column policy (AST check + authorizer allowlist) for a database that holds more than
+    the role may see. audit: receives every authorizer decision, used as a structural leak oracle."""
     validate_sql(sql)
+    if policy is not None and ast_check:
+        try:
+            guard.check(sql, policy)
+        except guard.PolicyError as e:
+            raise GuardError(str(e)) from e
     uri = f"file:{Path(db_path).resolve()}?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
+    conn.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
     deadline = time.monotonic() + timeout_s
     # a non-zero return from the progress handler aborts the running query
     conn.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10_000)
+    conn.set_authorizer(guard.make_authorizer(audit, guard.allowed_map(policy) if policy else None))
     try:
         cur = conn.execute(sql)
         rows = cur.fetchmany(max_rows + 1)
         cols = [d[0] for d in cur.description or []]
-    except sqlite3.OperationalError as e:
+    except sqlite3.DatabaseError as e:
         if "interrupted" in str(e):
             raise GuardError(f"query exceeded {timeout_s}s timeout") from e
+        if "not authorized" in str(e) or "prohibited" in str(e):
+            raise GuardError("query touches data this role cannot access") from e
         raise
     finally:
         conn.close()

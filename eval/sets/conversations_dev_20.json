@@ -1,0 +1,42 @@
+[
+  {
+    "conv_id": "cs_001", "db_id": "california_schools",
+    "turns": [
+      {"question": "How many schools with an average score in Math greater than 400 in the SAT test have been opened?", "standalone": "How many schools with an average score in Math greater than 400 in the SAT test have been opened?", "gold_sql": "SELECT COUNT(DISTINCT T2.School) FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F' AND T1.AvgScrMath > 400", "type": "root"},
+      {"question": "now only in Alameda county", "standalone": "How many schools with an average score in Math greater than 400 in the SAT test, that are not virtual and are in Alameda county, have been opened?", "gold_sql": "SELECT COUNT(DISTINCT T2.School) FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F' AND T1.AvgScrMath > 400 AND T2.County = 'Alameda'", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "what's the average of those scores instead of the count", "standalone": "What is the average Math SAT score of non-virtual schools in Alameda county with a Math SAT score greater than 400?", "gold_sql": "SELECT AVG(T1.AvgScrMath) FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F' AND T1.AvgScrMath > 400 AND T2.County = 'Alameda'", "type": "change_agg", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_002", "db_id": "california_schools",
+    "turns": [
+      {"question": "List the names and streets of schools with more than 30 difference in enrollment between K-12 and ages 5-17.", "standalone": "List the names and streets of schools with more than 30 difference in enrollment between K-12 and ages 5-17.", "gold_sql": "SELECT T1.School, T1.Street FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE ABS(T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 30", "type": "root"},
+      {"question": "and their cities instead of streets", "standalone": "List the names and cities of schools with more than 30 difference in enrollment between K-12 and ages 5-17.", "gold_sql": "SELECT T1.School, T1.City FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE ABS(T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 30", "type": "ellipsis", "depends_on_turn": 1},
+      {"question": "make that difference over 100 instead", "standalone": "List the names and cities of schools with more than 100 difference in enrollment between K-12 and ages 5-17.", "gold_sql": "SELECT T1.School, T1.City FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE ABS(T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 100", "type": "replace_value", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_003", "db_id": "california_schools",
+    "turns": [
+      {"question": "State the names and full communication address of high schools in Monterey which have a free meal count of over 800 for ages 5-17.", "standalone": "State the names and full communication address of high schools in Monterey which have a free meal count of over 800 for ages 5-17.", "gold_sql": "SELECT T1.`School Name`, T2.Street, T2.City, T2.State, T2.Zip FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Monterey' AND T1.`Free Meal Count (Ages 5-17)` > 800 AND T1.`School Type` = 'High Schools (Public)'", "type": "root"},
+      {"question": "which of those have more than 1000 free meal count", "standalone": "Among high schools in Monterey with a free meal count of over 800 for ages 5-17, which ones have a free meal count of over 1000 for ages 5-17?", "gold_sql": "SELECT T1.`School Name`, T2.Street, T2.City, T2.State, T2.Zip FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Monterey' AND T1.`Free Meal Count (Ages 5-17)` > 800 AND T1.`School Type` = 'High Schools (Public)' AND T1.`Free Meal Count (Ages 5-17)` > 1000", "type": "add_filter", "depends_on_turn": 1},
+      {"question": "never mind the charter part, just tell me how many schools total match the Monterey criteria", "standalone": "How many high schools in Monterey have a free meal count of over 800 for ages 5-17?", "gold_sql": "SELECT COUNT(*) FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Monterey' AND T1.`Free Meal Count (Ages 5-17)` > 800 AND T1.`School Type` = 'High Schools (Public)'", "type": "undo", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_004", "db_id": "california_schools",
+    "turns": [
+      {"question": "Please list the codes of the schools with a total enrollment of over 500.", "standalone": "Please list the codes of the schools with a total enrollment of over 500.", "gold_sql": "SELECT T2.CDSCode FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.`Enrollment (K-12)` + T2.`Enrollment (Ages 5-17)` > 500", "type": "root"},
+      {"question": "how many of those are there", "standalone": "How many schools have a total enrollment (K-12 plus ages 5-17) of over 500?", "gold_sql": "SELECT COUNT(*) FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.`Enrollment (K-12)` + T2.`Enrollment (Ages 5-17)` > 500", "type": "change_agg", "depends_on_turn": 1},
+      {"question": "what about schools in general, how many are there in the whole database", "standalone": "How many schools are in the database in total?", "gold_sql": "SELECT COUNT(*) FROM schools", "type": "topic_shift", "depends_on_turn": 2}
+    ]
+  },
+  {
+    "conv_id": "cs_005", "db_id": "california_schools",
+    "turns": [
+      {"question": "Name schools in Riverside which the average of average math score for SAT is greater than 400, what is the funding type of these schools?", "standalone": "Name schools in Riverside where the average Math SAT score is greater than 400, and give the funding type of these schools.", "gold_sql": "SELECT T1.sname, T2.`Charter Funding Type` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN schools AS T3 ON T1.cds = T3.CDSCode WHERE T3.County = 'Riverside' AND T1.AvgScrMath > 400", "type": "root"},
+      {"question": "those but for San Bernardino county", "standalone": "Name schools in San Bernardino county where the average Math SAT score is greater than 400, and give the funding type of these schools.", "gold_sql": "SELECT T1.sname, T2.`Charter Funding Type` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN schools AS T3 ON T1.cds = T3.CDSCode WHERE T3.County = 'San Bernardino' AND T1.AvgScrMath > 400", "type": "coref", "depends_on_turn": 1},
+      {"question": "only the ones with a score over 500 this time", "standalone": "Name schools in San Bernardino county where the average Math SAT score is greater than 500, and give the funding type of these schools.", "gold_sql": "SELECT T1.sname, T2.`Charter Funding Type` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN schools AS T3 ON T1.cds = T3.CDSCode WHERE T3.County = 'San Bernardino' AND T1.AvgScrMath > 500", "type": "replace_value", "depends_on_turn": 2}
+    ]
+  }
+]

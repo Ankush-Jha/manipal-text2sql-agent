@@ -19,9 +19,15 @@ FIELDS = ("metric", "definition", "formula", "aggregation", "include", "exclude"
 
 
 @lru_cache(maxsize=32)
-def _raw(db_id: str) -> dict:
+def _read(db_id: str, mtime_ns: int) -> dict:
     p = RULES_DIR / f"{db_id}.json"
     return json.loads(p.read_text()) if p.exists() else {}
+
+
+def _raw(db_id: str) -> dict:
+    db_id = db_id.split("__")[0]  # role databases (<db>__<role>) share the base database's rules
+    p = RULES_DIR / f"{db_id}.json"
+    return _read(db_id, p.stat().st_mtime_ns if p.exists() else 0)
 
 
 def load(db_id: str, profile: dict) -> dict:

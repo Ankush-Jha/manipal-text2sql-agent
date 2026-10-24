@@ -1,0 +1,108 @@
+{
+  "rbac": {
+    "layers": [
+      "none",
+      "ast",
+      "authorizer",
+      "ast+authorizer",
+      "role_db",
+      "all"
+    ],
+    "leaks": {
+      "none": 43,
+      "ast": 6,
+      "authorizer": 6,
+      "ast+authorizer": 6,
+      "role_db": 0,
+      "all": 0
+    },
+    "total_attacks": 57,
+    "benign_refused": {
+      "role_db": "0/30",
+      "all": "0/30"
+    }
+  },
+  "injection": {
+    "total_cases": 32,
+    "payload_families": 8,
+    "channels": 4,
+    "defenses_off_reach": "32/32 (100%)",
+    "defenses_on_reach": "0/32 (0%)",
+    "benign_altered": "0/5 (0%)"
+  },
+  "drift": {
+    "mapping_accuracy": "89/89 (100.0%) across all 5 perturbation kinds",
+    "perturbations": [
+      "t_ren",
+      "c_abbr",
+      "t_vsplit",
+      "t_hsplit",
+      "combo"
+    ],
+    "tables_rebuildable": "3/3 (100%)",
+    "gold_roundtrip": "100% on valid scope",
+    "live_runs": {
+      "c": {
+        "abbr": 33.3
+      },
+      "combo": {
+        "A": 33.3,
+        "D": 66.7
+      },
+      "t": {
+        "hsplit": 0.0,
+        "ren": 33.3,
+        "vsplit": 33.3
+      }
+    }
+  },
+  "conversations": {
+    "total_conversations": 56,
+    "total_turns": 168,
+    "types": {
+      "root": 56,
+      "add_filter": 36,
+      "change_agg": 30,
+      "ellipsis": 5,
+      "replace_value": 2,
+      "undo": 8,
+      "topic_shift": 11,
+      "coref": 20
+    },
+    "databases": {
+      "california_schools": 5,
+      "student_club": 6,
+      "financial": 5,
+      "formula_1": 5,
+      "card_games": 5,
+      "thrombosis_prediction": 5,
+      "debit_card_specializing": 5,
+      "european_football_2": 5,
+      "superhero": 5,
+      "toxicology": 5,
+      "codebase_community": 5
+    },
+    "live_results": null
+  },
+  "ambiguity": {
+    "total_ambiguous": 100,
+    "edits": {
+      "column_synonym": 34,
+      "vague_filter": 61,
+      "stripped_evidence": 5
+    },
+    "databases": {
+      "california_schools": 10,
+      "student_club": 10,
+      "financial": 10,
+      "formula_1": 10,
+      "card_games": 10,
+      "thrombosis_prediction": 10,
+      "european_football_2": 10,
+      "superhero": 10,
+      "toxicology": 10,
+      "codebase_community": 10
+    },
+    "oracle_validated": "100/100 (100%) readings return non-empty differing rowsets"
+  }
+}

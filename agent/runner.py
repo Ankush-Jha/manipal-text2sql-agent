@@ -12,8 +12,11 @@ def result_key(sql: str, res: ExecResult):
 
 
 def run_candidates(db_path, sqls: list[str | None], repair: Callable[[str, str], str | None] | None = None,
-                   timeout_s: float = 10, max_rows: int = 1000) -> dict:
-    """repair(sql, error_text) -> new sql or None. Returns groups, per-candidate log and the winning group."""
+                   timeout_s: float = 10, max_rows: int = 1000,
+                   tiebreak: Callable[[], str | None] | None = None) -> dict:
+    """repair(sql, error_text) -> new sql or None. Returns groups, per-candidate log and the winning group.
+    tiebreak() -> one greedy (temperature 0) SQL, called lazily and ONLY when the top groups are tied. It never
+    adds a vote and never overrides a strict majority: it just picks among the tied top groups."""
     log, groups = [], defaultdict(list)
     for sql in sqls:
         entry = {"sql": sql, "error": None, "repaired": False, "rows": 0}
@@ -39,6 +42,23 @@ def run_candidates(db_path, sqls: list[str | None], repair: Callable[[str, str],
             groups[result_key(sql, res)].append((sql, res))
         log.append(entry)
     ranked = sorted(groups.values(), key=lambda g: (len(g), len(g[0][1].rows) > 0), reverse=True)
+    tb = {"tied": False, "matched": False, "greedy_sql": None, "default_sql": ranked[0][0][0] if ranked else None}
+    if tiebreak and len(ranked) >= 2 and len(ranked[0]) == len(ranked[1]):
+        tb["tied"] = True
+        top = len(ranked[0])
+        try:
+            gsql = tiebreak()
+            tb["greedy_sql"] = gsql
+            gres = execute(db_path, gsql, timeout_s, max_rows) if gsql else None
+        except Exception:
+            gres = None
+        if gres is not None:
+            gkey = result_key(gsql, gres)
+            for i, g in enumerate(ranked):
+                if len(g) == top and result_key(g[0][0], g[0][1]) == gkey:
+                    ranked.insert(0, ranked.pop(i))
+                    tb["matched"] = True
+                    break
     out_groups = [{"size": len(g), "rows": len(g[0][1].rows), "sqls": [s for s, _ in g]} for g in ranked]
     winner = ranked[0] if ranked else None
     n_ok = sum(len(g) for g in ranked)
@@ -47,5 +67,7 @@ def run_candidates(db_path, sqls: list[str | None], repair: Callable[[str, str],
         "vote_share": (len(winner) / len(sqls)) if winner and sqls else 0.0,
         "winner_sql": winner[0][0] if winner else None,
         "winner_result": winner[0][1] if winner else None,
+        "reps": [(g[0][0], g[0][1]) for g in ranked],  # one (sql, result) per result group, most votes first
         "n_executed": n_ok,
+        "tiebreak": tb,
     }

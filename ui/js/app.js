@@ -8,10 +8,13 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 const state = {
-  dbs: [], db: store.get("db", "california_schools"), mode: store.get("mode", "product"), n: 5,
+  dbs: [], db: store.get("db", "california_schools"), mode: store.get("mode", "product"), n: 1,
   running: false, controller: null, current: null, history: store.get("history", []),
   health: { writer: false, judge: false }, view: "ask", stepTimes: {},
   dialog: null, // clarification chat in progress: { question, turns, answers, rounds }
+  role: store.get("role", null), // current RBAC role: null = unrestricted
+  roles: [],    // available roles for the current db
+  turns: [],    // conversation turns: [{standalone, sql}] for follow-up rewriting
 };
 
 const pipeline = new Pipeline($("#canvas"));
@@ -20,6 +23,7 @@ const pipeline = new Pipeline($("#canvas"));
 hydrateIcons();
 bind();
 setMode(state.mode, false);
+renderRoleIndicator();
 renderCards(null);
 renderPanes(null);
 renderHistory();
@@ -53,6 +57,7 @@ function renderDbMenu() {
 async function selectDb(id) {
   state.db = id;
   store.set("db", id);
+  state.turns = []; // new db = new conversation
   const d = state.dbs.find((x) => x.id === id);
   if (!d) return;
   $("#dbAvatar").innerHTML = dbTile(id, dbIndex(id));
@@ -64,6 +69,15 @@ async function selectDb(id) {
   closeDbMenu();
   const ex = await (await fetch(`/api/examples?db=${id}`)).json();
   renderExamples(ex);
+  // load roles for this db
+  try {
+    const rs = await (await fetch(`/api/roles?db=${id}`)).json();
+    state.roles = rs;
+    if (state.role && !rs.find((r) => r.id === state.role)) {
+      state.role = null; store.set("role", null);
+    }
+  } catch { state.roles = []; }
+  renderRoleIndicator();
   if (state.view === "data") renderData($("#dataBody"), id, $("#colSearch").value);
 }
 
@@ -123,6 +137,53 @@ function setMode(mode, persist = true) {
   updateReadiness();
 }
 
+// ───────────────────────── roles ─────────────────────────
+function setRole(roleId, persist = true) {
+  state.role = roleId || null;
+  if (persist) store.set("role", state.role);
+  state.turns = []; // role change resets conversation context
+  renderRoleIndicator();
+  updateReadiness();
+}
+
+function renderRoleIndicator() {
+  const el = $("#roleIndicator");
+  if (!el) return;
+  if (!state.roles.length) { el.hidden = true; return; }
+  el.hidden = false;
+  const cur = state.roles.find((r) => r.id === state.role);
+  const curLabel = cur ? cur.id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "Role: Full Access";
+  el.innerHTML = `
+    <button class="role-btn" id="roleBtn" aria-haspopup="listbox" aria-expanded="false" title="Switch role (RBAC demo)">
+      ${icon("shield")}<span id="roleLabel">${esc(curLabel)}</span><span class="chev">${icon("chevronDown")}</span>
+    </button>
+    <div class="role-menu" id="roleMenu" role="listbox" hidden>
+      <button class="role-opt${!state.role ? " is-active" : ""}" data-role="" role="option">
+        <b>No role <small style="color:var(--good);font-weight:600">FULL ACCESS</small></b>
+        <small>Unrestricted access to all tables and columns</small>
+      </button>
+      ${state.roles.map((r) => `
+        <button class="role-opt${state.role === r.id ? " is-active" : ""}" data-role="${esc(r.id)}" role="option">
+          <b>${esc(r.id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()))} <small style="color:var(--accent-ink)">${esc(r.id)}</small></b>
+          <small>${esc(r.description)}</small>
+        </button>`).join("")}
+    </div>`;
+  hydrateIcons(el);
+  el.querySelector("#roleBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const rm = $("#roleMenu"); rm.hidden = !rm.hidden;
+    el.querySelector("#roleBtn").setAttribute("aria-expanded", !rm.hidden);
+  });
+  el.querySelectorAll(".role-opt").forEach((b) => b.addEventListener("click", () => {
+    setRole(b.dataset.role);
+    $("#roleMenu").hidden = true;
+    el.querySelector("#roleBtn").setAttribute("aria-expanded", "false");
+    const name = b.dataset.role ? b.dataset.role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "Full Access";
+    toast(`Active role: ${name}`);
+  }));
+}
+
+
 async function ask(question, { silent = false, choice = null, rounds = 0 } = {}) {
   question = question.trim();
   if (!question || state.running) return null;
@@ -149,9 +210,14 @@ async function ask(question, { silent = false, choice = null, rounds = 0 } = {})
   }, 200);
   let result = null;
   try {
+    // build history for follow-up rewriting: only send if there are prior answered turns
+    const history = state.turns.length ? state.turns : null;
     const res = await fetch("/api/ask", {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
-      body: JSON.stringify({ question, db: state.db, mode: state.mode, n_samples: state.n, choice, rounds }),
+      body: JSON.stringify({
+        question, db: state.db, mode: state.mode, n_samples: state.n, choice, rounds,
+        role: state.role || undefined, history,
+      }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -164,6 +230,11 @@ async function ask(question, { silent = false, choice = null, rounds = 0 } = {})
     }
     if (!result) throw new Error("The answer stream ended early.");
     state.current.result = result;
+    // record this turn so the next question can follow up on it
+    if (result.status === "answered") {
+      const standalone = result.interpreted_as || question;
+      state.turns = [...state.turns, { standalone, sql: result.sql }].slice(-6);
+    }
     if (result.status === "needs_clarification" && result.choices?.length) {
       state.dialog ??= { question, turns: [], answers: [], rounds: 0 };
       state.dialog.rounds += 1;
@@ -175,6 +246,10 @@ async function ask(question, { silent = false, choice = null, rounds = 0 } = {})
     addHistory(question, result);
   } catch (e) {
     if (e.name === "AbortError") { pipeline.fail("Cancelled."); renderCards(null); }
+    else if (e.code === "permission") {
+      pipeline.fail("Blocked by role policy.");
+      renderCards({ status: "permission", reason: e.message }, question);
+    }
     else { pipeline.fail(e.message); renderCards({ status: "error", reason: e.message }, question); showNotice("error", esc(e.message)); }
   } finally {
     clearInterval(clock);
@@ -250,8 +325,33 @@ function renderAnswer(r, question) {
     body.innerHTML = `<span class="verdict refused">${icon("alert")}Something went wrong</span><div class="answer-reason">${esc(r.reason)}</div>`;
     return;
   }
-  const modeLine = `${r.mode === "product" ? "Careful" : "Always answer"} · ${r.decider === "jev" ? "Jev decider" : "local models"}`;
+  if (r.status === "permission") {
+    const curRole = state.roles.find((x) => x.id === state.role);
+    const roleTitle = curRole ? curRole.id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "Restricted Role";
+    body.innerHTML = `
+      <span class="verdict permission">${icon("lock")}Access Restricted</span>
+      <div class="permission-banner">
+        <div class="permission-badge">
+          ${icon("lock")}
+          <span>${esc(r.reason || "This column is restricted for your role.")}</span>
+        </div>
+      </div>
+      <div class="answer-reason" style="color:var(--text-2);font-size:12.5px;margin-top:6px">
+        This column or table is excluded from the active role's physical database view. No query can read it.
+      </div>
+      <div class="answer-foot">${icon("shield")}RBAC access control · Active role: <b>${esc(roleTitle)}</b></div>`;
+    hydrateIcons(body);
+    return;
+  }
+  const curRole = state.roles.find((x) => x.id === state.role);
+  const roleLine = curRole ? ` · Role: ${curRole.id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}` : "";
+  const modeLine = `${r.mode === "product" ? "Careful" : "Always answer"} · ${r.decider === "jev" ? "Jev decider" : "local models"}${roleLine}`;
   meta.textContent = modeLine;
+
+  const interpBanner = (r.interpreted_as && r.interpreted_as.trim().toLowerCase() !== question.trim().toLowerCase())
+    ? `<div class="interp-banner">${icon("search")}<span>Interpreting as: <b>“${esc(r.interpreted_as)}”</b></span></div>`
+    : "";
+
   if (r.status === "answered") {
     const rows = r.answer_rows || [], cols = r.columns || [];
     const single = rows.length === 1 && cols.length === 1;
@@ -271,15 +371,19 @@ function renderAnswer(r, question) {
     const rd = r.trace?.find((t) => t.step === "rules")?.detail;
     const defs = [...(rd?.applied || []).map((x) => `${esc(x.metric)} <span class="muted">(rule v${esc(x.version)})</span>`),
       ...(rd?.windows || []).map((w) => `“${esc(w.phrase)}” = ${esc(w.start)} to ${esc(w.end)} <span class="muted">(end exclusive)</span>`)];
-    body.innerHTML = `<span class="verdict answered">${icon("checkCircle")}Answered · ${pct(r.confidence)} sure</span>${main}
+    body.innerHTML = `<span class="verdict answered">${icon("checkCircle")}Answered · ${pct(r.confidence)} sure</span>
+      ${interpBanner}
+      ${main}
       ${defs.length ? `<div class="sub" style="margin-top:6px">${icon("shield")} ${defs.join(" · ")}</div>` : ""}
       <div class="answer-foot">${icon("table")}<button class="link-btn" data-goto="table">${more ? "See every row and column" : "Open as table"}</button></div>`;
   } else if (r.status === "refused") {
     body.innerHTML = `<span class="verdict refused">${icon("xCircle")}Can’t answer reliably</span>
+      ${interpBanner}
       <div class="answer-reason">${esc(r.reason)}</div>
       <div class="answer-foot">${icon("info")}A plausible wrong answer is worse than none.</div>`;
   } else {
     body.innerHTML = `<span class="verdict needs_clarification">${icon("help")}Needs a detail</span>
+      ${interpBanner}
       ${threadHtml()}
       <div class="answer-reason">${esc(r.reason)}</div>
       ${r.choices?.length
@@ -467,6 +571,7 @@ function newQuestion() {
   if (state.running) return;
   state.current = null;
   state.dialog = null;
+  state.turns = []; // start a fresh conversation thread!
   $("#question").value = "";
   autosize();
   pipeline.reset(state.mode);
@@ -493,6 +598,11 @@ function bind() {
   $("#dbCard").addEventListener("click", (e) => { e.stopPropagation(); $("#dbMenu").hidden ? openDbMenu() : closeDbMenu(); });
   document.addEventListener("click", (e) => {
     if (!e.target.closest("#dbMenu")) closeDbMenu();
+    if (!e.target.closest("#roleIndicator")) {
+      const rm = $("#roleMenu");
+      if (rm) rm.hidden = true;
+      $("#roleBtn")?.setAttribute("aria-expanded", "false");
+    }
     const db = e.target.closest("[data-db]");
     if (db && !state.running) selectDb(db.dataset.db);
     const ex = e.target.closest(".ex-item");

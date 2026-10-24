@@ -31,6 +31,7 @@ The UI's Pipeline tab shows these steps live.
 | Phase | Step | What it does | Model |
 | --- | --- | --- | --- |
 | Understand | Find tables & values | Lexical column match plus the exact stored values; keeps the top 5 tables | none |
+| | Value check | Literals the model invented ('Blonde', '2016/6/23') are swapped for the stored spelling; `LITERAL_REPAIR=0` turns it off | none |
 | | Auto-hints | Codes, stored values and date formats from the profiler; replaces BIRD's hand-written hints | none |
 | | Can the data answer? | Answerable / ambiguous / data missing / not SQL, read from letter probabilities | Qwen3-8B |
 | Generate | Write SQL attempts | N samples with the verbatim OmniSQL prompt | Arctic-R1-7B |

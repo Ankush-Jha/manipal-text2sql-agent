@@ -5,6 +5,8 @@ import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
+from agent.schema_state import schema_hash
+
 ROOT = Path(__file__).resolve().parent.parent
 STOP = set("the a an of in on at for to and or is are was were what which who how many much is by with from that this "
            "than then there their list give show name names all each per number total average highest lowest".split())
@@ -31,11 +33,12 @@ def ngrams(words: list[str], maxn: int = 4):
 
 
 def value_index(db_id: str, db_root=None) -> dict[str, list[tuple[str, str, str]]]:
-    return _value_index(db_id, str(db_root or ROOT / "data/dev_databases"))
+    root = Path(db_root or ROOT / "data/dev_databases")
+    return _value_index(db_id, str(root), schema_hash(root / db_id / f"{db_id}.sqlite"))
 
 
 @lru_cache(maxsize=None)
-def _value_index(db_id: str, root: str) -> dict[str, list[tuple[str, str, str]]]:
+def _value_index(db_id: str, root: str, schema_hash: str) -> dict[str, list[tuple[str, str, str]]]:
     """lowercased stored value -> [(table, column, original value)] for text columns with modest cardinality."""
     p = Path(root) / db_id / f"{db_id}.sqlite"
     conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
@@ -95,6 +98,8 @@ def link(question: str, evidence: str, profile: dict, db_id: str, top_cols: int 
         if g in idx and g not in STOP and g not in seen and _specific(g, text):
             seen.add(g)
             for t, c, v in idx[g][:3]:
+                if c not in profile["tables"].get(t, {}):  # profile older than the database: not a column we know
+                    continue
                 values.append((t, c, v))
                 scores[(t, c)] = scores.get((t, c), 0) + 3.0
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])[:top_cols]

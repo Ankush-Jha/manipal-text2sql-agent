@@ -26,6 +26,8 @@
         <div class="db-menu" id="dbMenu" role="listbox" hidden></div>
       </div>
 
+      <div class="role-pick" id="roleIndicator" hidden></div>
+
       <nav class="tabs nav-tabs" aria-label="Views">
         <button class="tab is-active" data-view="ask"><span data-icon="grid"></span>Ask</button>
         <button class="tab" data-view="results"><span data-icon="chart"></span>Results<span class="tab-badge" id="resultsBadge"></span></button>
@@ -69,7 +71,7 @@
               </div>
               <label class="attempts" title="SQL attempts per question">
                 <select id="attempts" aria-label="Attempts per question">
-                  <option value="1">1 attempt</option><option value="3">3 attempts</option><option value="5" selected>5 attempts</option>
+                  <option value="1" selected>1 attempt (Fast)</option><option value="3">3 attempts</option><option value="5">5 attempts (Thorough)</option>
                 </select>
               </label>
               <button type="button" class="icon-btn" id="cancelBtn" title="Cancel" hidden><span data-icon="x"></span></button>

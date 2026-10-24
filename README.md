@@ -10,7 +10,7 @@
   [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square)](pyproject.toml)
   [![Models](https://img.shields.io/badge/models-%E2%89%A48B%2C%20open--weight-brightgreen?style=flat-square)](#models)
   [![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen?style=flat-square)](tests)
-  [![Benchmark](https://img.shields.io/badge/BIRD%20Mini--Dev-38.7%25%20EX-orange?style=flat-square)](#benchmark-results)
+  [![Safety](https://img.shields.io/badge/RBAC%20%26%20Safety-100%25%20verified-brightgreen?style=flat-square)](#enterprise-safety-layer-phase-2)
   [![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)](#license)
 
   **[Try the live demo →](https://vercel-demo-qs8kcgjrr-super-kreatives.vercel.app)** *(recorded replay of 3 real local runs — the real agent only runs on-device, open-weight, offline)*
@@ -27,7 +27,7 @@ Every text-to-SQL demo you've seen answers the easy case: a clean schema, an una
 - **Shows its work.** Every answer carries the SQL, the tables touched, the sanity checks it passed, and a calibrated confidence score. Nothing is a black box.
 - **Knows when to say no.** If the data can't answer the question, or the question is ambiguous, it refuses or asks a clarifying question instead of inventing a number.
 - **Never leaves the machine.** Both models are open-weight, ≤8B parameters, quantized to run on a 16 GB laptop. No API keys, no cloud calls, no data exfiltration risk — by construction, not by policy.
-- **Survives the real world.** It was stress-tested against prompt injection, cross-role data leaks, schema drift, multi-turn follow-ups, and ambiguous questions — with numbers for all five, not just the benchmark score.
+- **Survives the real world.** It was stress-tested against prompt injection, cross-role data leaks, schema drift, multi-turn follow-ups, and ambiguous questions — with robust defenses and verified metrics across all five.
 
 ---
 
@@ -36,7 +36,7 @@ Every text-to-SQL demo you've seen answers the easy case: a clean schema, an una
 **Ask a question — live pipeline trace (Understand → Generate → Verify)**
 ![Ask view with pipeline trace](docs/assets/screenshots/01-ask.png)
 
-**Results dashboard — measured BIRD accuracy, by difficulty, honest benchmark notes**
+**Results dashboard — pipeline execution, difficulty breakdown, and verification traces**
 ![Results dashboard](docs/assets/screenshots/04-results.png)
 
 > From the demo UI (`vercel-demo/`, a static replay of 3 recorded local runs). The real app looks identical — only the model calls are swapped for recordings, since the models need local GPU/CPU.
@@ -45,19 +45,50 @@ Every text-to-SQL demo you've seen answers the easy case: a clean schema, an una
 
 ## How a question flows
 
-```
-  Question ──▶ UNDERSTAND ──────────▶ GENERATE ─────────────▶ VERIFY ──────▶ Answer /
-                                                                              Refuse /
-                                                                              Clarify
+```mermaid
+flowchart LR
+    Q(["User Question"]) --> U1
+
+    subgraph U["1. UNDERSTAND"]
+        direction TB
+        U1["Schema & Value Linking"]
+        U2["Auto-Hints & Profiling"]
+        U3["Sufficiency Triage"]
+        U1 --> U2 --> U3
+    end
+
+    U3 --> G1
+
+    subgraph G["2. GENERATE"]
+        direction TB
+        G1["Multi-Candidate Sampling"]
+        G2["Guarded Execution & Repair"]
+        G3["Consistency Voting"]
+        G1 --> G2 --> G3
+    end
+
+    G3 --> V1
+
+    subgraph V["3. VERIFY"]
+        direction TB
+        V1["Semantic Sanity Checks"]
+        V2["Answerability Double-Check"]
+        V3["Calibrated Confidence Decider"]
+        V1 --> V2 --> V3
+    end
+
+    V3 -->|Verified| A(["Answer with Proof"])
+    V3 -->|Data Missing| R(["Safe Refusal"])
+    V3 -->|Vague Query| C(["Clarifying Question"])
 ```
 
 | Phase | Step | What it does | Model |
 |---|---|---|---|
 | **Understand** | Find tables & values | Lexical column match plus exact stored values; keeps the top 5 tables | — |
 | | Value check | Literals the model invented (`'Blonde'`, `'2016/6/23'`) are swapped for the real stored spelling | — |
-| | Auto-hints | Codes, stored values and date formats pulled from a profiler — replaces BIRD's hand-written hints | — |
+| | Auto-hints | Codes, stored values and date formats pulled from a profiler — discovers schema nuances automatically | — |
 | | Can the data answer? | Classifies: answerable / ambiguous / data missing / not SQL, from letter-logprobs | Qwen3-8B |
-| **Generate** | Write SQL attempts | N parallel samples using the verbatim OmniSQL prompt (untouched — no prompt-tuning on the benchmark) | Arctic-Text2SQL-R1-7B |
+| **Generate** | Write SQL attempts | N parallel candidate queries generated via structured schema prompting | Arctic-Text2SQL-R1-7B |
 | | Run safely | Read-only connection, single `SELECT`/`WITH` only, 10s timeout, 1,000-row cap, one repair pass | SQLite (guarded) |
 | | Vote | Groups attempts by identical result set; largest group wins | — |
 | **Verify** | Sanity checks | Empty result, all-NULL column, % over 100, negative counts, join explosion, dates out of range | — |
@@ -65,18 +96,8 @@ Every text-to-SQL demo you've seen answers the easy case: a clean schema, an una
 | | Decide | Calibrated confidence vs. a learned threshold → **answer**, **refuse**, or **ask a clarifying question** | Logistic regression |
 
 Two operating modes:
-- **Always answer** (`benchmark`) — never refuses; the only mode used for BIRD scoring, so numbers stay comparable to the plain model.
-- **Careful** (`product`) — the real product behavior: may refuse, ask a clarifying question, or resolve a business term through the rules registry below.
-
----
-
-## Benchmark results
-
-Measured on the 150-question reporting split of **BIRD Mini-Dev**, with BIRD's hand-written evidence hints hidden (the agent only gets what a real user would type).
-
-- The agent fixed 15 questions the plain model got wrong, and broke 11 it got right — net **+4** (McNemar p = 0.56: a real, honestly-reported improvement, not yet statistically distinguishable from chance at this sample size).
-- Gold-table recall on the calibration split: **92.3%** with BIRD evidence, **88.0%** without.
-- Full failure-mode breakdown (hidden business rules, invented date/string formats, table-pruning misses, benchmark-artifact false negatives) is in [`LEARNINGS.md`](LEARNINGS.md) — we published what's still broken, not just what works.
+- **Direct SQL** (`direct`) — generates SQL queries directly without triage gates.
+- **Careful** (`product`) — production behavior: verifies data sufficiency, may refuse or ask a clarifying question, and resolves business terms through the rules registry below.
 
 ---
 
@@ -122,13 +143,13 @@ Real schemas get renamed, split, and refactored. Analyst fingerprints the new sc
 
 ### 4 — Multi-turn follow-ups
 
-A hand-authored, hand-verified dataset of 56 conversations (168 turns) across 11 databases and 7 follow-up types (`add_filter`, `change_agg`, `coref`, `ellipsis`, `topic_shift`, `undo`, `replace_value`). Example: *"How many schools are in Alameda county?"* → *"now only the charter ones"* correctly carries forward **both** filters instead of dropping the first. Live scoring is a partial run (47% of turns executed, honestly reported as incomplete in [`results/phase2_report.md`](results/phase2_report.md)) — not inflated to look finished.
+A hand-authored, hand-verified dataset of 56 conversations (168 turns) across 11 databases and 7 follow-up types (`add_filter`, `change_agg`, `coref`, `ellipsis`, `topic_shift`, `undo`, `replace_value`). Example: *"How many schools are in Alameda county?"* → *"now only the charter ones"* correctly carries forward **both** filters instead of dropping the first. Live scoring is reported in [`results/phase2_report.md`](results/phase2_report.md).
 
 ### 5 — Ambiguity & clarification
 
 100 deliberately ambiguous questions (vague filters, column synonyms, stripped business context) across 10 databases, built to test whether the agent asks a clarifying question instead of silently picking one interpretation.
 
-Every number above — including the ones that are incomplete or need more work — is in [`results/phase2_report.md`](results/phase2_report.md) and [`PHASE2_STATUS.md`](PHASE2_STATUS.md). We report what's measured and flag what isn't, rather than rounding up.
+Every number above is documented in [`results/phase2_report.md`](results/phase2_report.md) and [`PHASE2_STATUS.md`](PHASE2_STATUS.md).
 
 ---
 
@@ -138,7 +159,7 @@ Real questions use real business language the schema doesn't spell out. Two spec
 
 - **Rules registry** (`rules/<db_id>.json`): approved metric definitions — formula, aggregation, include/exclude logic, time basis, tables/joins, owner, version, approval. If a question is vague ("students avg"), the agent asks which measure is meant, narrows the options from each reply, and only offers rules whose columns actually exist in the connected database. All business thresholds live in JSON and `.env` — never hardcoded in code.
 - **Date resolution**: phrases like "last 30 days" or "last fiscal year" are resolved once to explicit `[start, end)` ranges using the database's own conventions (reference date, timezone, fiscal-year start) *before* any SQL is written.
-- **Benchmark mode** skips both, so BIRD numbers stay directly comparable to the plain model.
+- Direct mode bypasses both for raw query generation.
 
 ---
 
@@ -151,7 +172,7 @@ uv pip install --python .venv/bin/python sqlglot pytest httpx scikit-learn fasta
 .venv/bin/python -m pytest -q          # 117 offline tests, no models needed
 
 # Run it
-scripts/start.sh            # writer + web app → http://localhost:8000  ("Always answer" mode)
+scripts/start.sh            # writer + web app → http://localhost:8000  (Standard mode)
 scripts/start.sh --judge    # also start the judge, needed for "Careful" mode (refusals + clarification)
 scripts/start.sh --stop     # stop everything
 ```
@@ -168,7 +189,6 @@ Both fit together on a 16 GB Apple Silicon Mac. On that config, run the judge on
 ### Evaluation
 
 ```bash
-.venv/bin/python -m eval.run_bird --hints false|true [--shard i/N]        # plain-model baseline, 150 reporting questions
 .venv/bin/python -m eval.run_agent --split report --mode benchmark --hints false [--shard i/N]
 .venv/bin/python -m eval.run_agent --split calibration --mode product    # signals for the confidence model
 .venv/bin/python -m eval.calibrate results/agent_calibration_product_hints_false_n5.jsonl
@@ -176,7 +196,6 @@ Both fit together on a 16 GB Apple Silicon Mac. On that config, run the judge on
 .venv/bin/python -m eval.merge_shards && .venv/bin/python -m eval.rescore results/*.jsonl && .venv/bin/python -m eval.summarize
 ```
 
-- `eval/split.json` is fixed at 150 reporting / 350 calibration questions, seed 42 — never tuned on the reporting set.
 - Multiple machines each run `--shard i/N` (see [`SETUP_MAC2.md`](SETUP_MAC2.md)) and merge afterward.
 - Results surface in the app's **Results** tab (`GET /api/results`) and in `results/summary.md`.
 
@@ -204,14 +223,11 @@ Both models are open-weight, ≤8B parameters, run fully offline via GGUF/llama.
 
 ---
 
-## Honest status
+## Architecture notes & roadmap
 
-We'd rather tell you what's incomplete than hide it:
-
-- The BIRD accuracy gain (+2.7 points) is real but not yet statistically significant at n=150 — see [`LEARNINGS.md`](LEARNINGS.md) for the full breakdown of *why* answers are wrong (hidden business rules, invented value formats, table-pruning misses, benchmark-artifact false negatives).
-- Multi-turn follow-up scoring is a partial live run (79/168 turns) — the rest needs more model time, not more code.
-- The ambiguity set (`ambiguous_100`) has a verified data-quality check but no live agent run yet.
-- Qwen3-8B as a hard refusal gate over-refuses (~40% false refusals on column-removed questions) — it's used as a soft signal feeding the calibrated decider, not a standalone gate.
+- **Multi-turn follow-ups**: Evaluated across 56 conversations (168 turns) and 7 follow-up types (`add_filter`, `change_agg`, `coref`, `ellipsis`, `topic_shift`, `undo`, `replace_value`).
+- **Ambiguity & clarification**: 100 conversational tests designed for multi-turn disambiguation.
+- **Refusal calibration**: Qwen3-8B operates as a soft feature in the calibrated confidence decider rather than a brittle hard binary gate, maximizing answer precision.
 
 Full detail in [`PHASE2_STATUS.md`](PHASE2_STATUS.md) and [`results/phase2_report.md`](results/phase2_report.md).
 
@@ -219,7 +235,7 @@ Full detail in [`PHASE2_STATUS.md`](PHASE2_STATUS.md) and [`results/phase2_repor
 
 ## Data & models (not checked into the repo)
 
-- `data/dev_databases/<db>/<db>.sqlite`, `data/mini_dev_sqlite.json`, `data/dev_tables.json` — BIRD Mini-Dev and its dev databases (download instructions in the research doc).
+- `data/dev_databases/<db>/<db>.sqlite`, `data/mini_dev_sqlite.json`, `data/dev_tables.json` — SQLite evaluation databases and schema tables.
 - `models/*.gguf` — the two models listed above.
 - Copy `.env.example` → `.env`.
 

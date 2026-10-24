@@ -1,0 +1,362 @@
+[
+ {
+  "id": "v1479_debit_card_specializing",
+  "question_id": 1479,
+  "db_id": "v1479_debit_card_specializing",
+  "source_db": "debit_card_specializing",
+  "question": "Which year recorded the most consumption of gas paid in CZK?",
+  "type": "schema_mismatch",
+  "dropped": "customers.Currency"
+ },
+ {
+  "id": "v1484_debit_card_specializing",
+  "question_id": 1484,
+  "db_id": "v1484_debit_card_specializing",
+  "source_db": "debit_card_specializing",
+  "question": "How many more \"discount\" gas stations does the Czech Republic have compared to Slovakia?",
+  "type": "schema_mismatch",
+  "dropped": "gasstations.Segment"
+ },
+ {
+  "id": "v1509_debit_card_specializing",
+  "question_id": 1509,
+  "db_id": "v1509_debit_card_specializing",
+  "source_db": "debit_card_specializing",
+  "question": "Among the transactions made in the gas stations in the Czech Republic, how many of them are taken place after 2012/1/1?",
+  "type": "schema_mismatch",
+  "dropped": "gasstations.Country"
+ },
+ {
+  "id": "v1515_debit_card_specializing",
+  "question_id": 1515,
+  "db_id": "v1515_debit_card_specializing",
+  "source_db": "debit_card_specializing",
+  "question": "What segment did the customer have at 2012/8/23 21:20:00?",
+  "type": "schema_mismatch",
+  "dropped": "customers.Segment"
+ },
+ {
+  "id": "v1525_debit_card_specializing",
+  "question_id": 1525,
+  "db_id": "v1525_debit_card_specializing",
+  "source_db": "debit_card_specializing",
+  "question": "What is the percentage of the customers who used EUR in 2012/8/25?",
+  "type": "schema_mismatch",
+  "dropped": "transactions_1k.Date"
+ },
+ {
+  "id": "v1317_student_club",
+  "question_id": 1317,
+  "db_id": "v1317_student_club",
+  "source_db": "student_club",
+  "question": "Among the students from the Student_Club who attended the event \"Women's Soccer\", how many of them want a T-shirt that's in medium size?",
+  "type": "schema_mismatch",
+  "dropped": "event.event_name"
+ },
+ {
+  "id": "v1323_student_club",
+  "question_id": 1323,
+  "db_id": "v1323_student_club",
+  "source_db": "student_club",
+  "question": "List all the names of events that had an attendance of over 20 students but were not fundraisers.",
+  "type": "schema_mismatch",
+  "dropped": "event.event_name"
+ },
+ {
+  "id": "v1340_student_club",
+  "question_id": 1340,
+  "db_id": "v1340_student_club",
+  "source_db": "student_club",
+  "question": "Calculate the difference of the total amount spent in all events by the Student_Club in year 2019 and 2020.",
+  "type": "schema_mismatch",
+  "dropped": "budget.spent"
+ },
+ {
+  "id": "v1344_student_club",
+  "question_id": 1344,
+  "db_id": "v1344_student_club",
+  "source_db": "student_club",
+  "question": "What was the notes of the fundraising on 2019/9/14?",
+  "type": "schema_mismatch",
+  "dropped": "income.notes"
+ },
+ {
+  "id": "v1356_student_club",
+  "question_id": 1356,
+  "db_id": "v1356_student_club",
+  "source_db": "student_club",
+  "question": "Which department was the President of the club in?",
+  "type": "schema_mismatch",
+  "dropped": "major.department"
+ },
+ {
+  "id": "v1361_student_club",
+  "question_id": 1361,
+  "db_id": "v1361_student_club",
+  "source_db": "student_club",
+  "question": "What is the total cost of the pizzas for all the events?",
+  "type": "schema_mismatch",
+  "dropped": "expense.cost"
+ },
+ {
+  "id": "v1389_student_club",
+  "question_id": 1389,
+  "db_id": "v1389_student_club",
+  "source_db": "student_club",
+  "question": "Which event has the lowest cost?",
+  "type": "schema_mismatch",
+  "dropped": "event.event_name"
+ },
+ {
+  "id": "v1399_student_club",
+  "question_id": 1399,
+  "db_id": "v1399_student_club",
+  "source_db": "student_club",
+  "question": "Did Maya Mclean attend the 'Women's Soccer' event?",
+  "type": "schema_mismatch",
+  "dropped": "member.first_name"
+ },
+ {
+  "id": "v1409_student_club",
+  "question_id": 1409,
+  "db_id": "v1409_student_club",
+  "source_db": "student_club",
+  "question": "Mention the total expense used on 8/20/2019.",
+  "type": "schema_mismatch",
+  "dropped": "expense.cost"
+ },
+ {
+  "id": "v1435_student_club",
+  "question_id": 1435,
+  "db_id": "v1435_student_club",
+  "source_db": "student_club",
+  "question": "List the names of closed event as \"game\" that was closed from 3/15/2019 to 3/20/2020.",
+  "type": "schema_mismatch",
+  "dropped": "event.event_name"
+ },
+ {
+  "id": "v1460_student_club",
+  "question_id": 1460,
+  "db_id": "v1460_student_club",
+  "source_db": "student_club",
+  "question": "Write the full name of the member who spent money for water, veggie tray and supplies and include the cost of it.",
+  "type": "schema_mismatch",
+  "dropped": "member.first_name"
+ },
+ {
+  "id": "v1149_thrombosis_prediction",
+  "question_id": 1149,
+  "db_id": "v1149_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "Are there more in-patient or outpatient who were male? What is the deviation in percentage?",
+  "type": "schema_mismatch",
+  "dropped": "patient.SEX"
+ },
+ {
+  "id": "v1156_thrombosis_prediction",
+  "question_id": 1156,
+  "db_id": "v1156_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "State the ID and age of patient with positive degree of coagulation.",
+  "type": "schema_mismatch",
+  "dropped": "examination.RVVT"
+ },
+ {
+  "id": "v1157_thrombosis_prediction",
+  "question_id": 1157,
+  "db_id": "v1157_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "For patients with severe degree of thrombosis, list their ID, sex and disease the patient is diagnosed with.",
+  "type": "schema_mismatch",
+  "dropped": "patient.SEX"
+ },
+ {
+  "id": "v1169_thrombosis_prediction",
+  "question_id": 1169,
+  "db_id": "v1169_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "What is the ratio of male to female patients among all those with abnormal uric acid counts?",
+  "type": "schema_mismatch",
+  "dropped": "laboratory.UA"
+ },
+ {
+  "id": "v1171_thrombosis_prediction",
+  "question_id": 1171,
+  "db_id": "v1171_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "How many underage patients were examined during the course of the three-year period from 1990 to 1993?",
+  "type": "schema_mismatch",
+  "dropped": "examination.Examination Date"
+ },
+ {
+  "id": "v1175_thrombosis_prediction",
+  "question_id": 1175,
+  "db_id": "v1175_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "How old was the patient who had the highest hemoglobin count at the time of the examination, and what is the doctor's diagnosis?",
+  "type": "schema_mismatch",
+  "dropped": "patient.Diagnosis"
+ },
+ {
+  "id": "v1185_thrombosis_prediction",
+  "question_id": 1185,
+  "db_id": "v1185_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "For the patient who was born on 1959/2/18, what is the decrease rate for his/her total cholesterol from November to December in 1981?",
+  "type": "schema_mismatch",
+  "dropped": "patient.Birthday"
+ },
+ {
+  "id": "v1187_thrombosis_prediction",
+  "question_id": 1187,
+  "db_id": "v1187_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "How many patients who were examined between 1987/7/6 and 1996/1/31 had a GPT level greater than 30 and an ALB level less than 4? List them by their ID.",
+  "type": "schema_mismatch",
+  "dropped": "laboratory.ALB"
+ },
+ {
+  "id": "v1192_thrombosis_prediction",
+  "question_id": 1192,
+  "db_id": "v1192_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "List all patients who were followed up at the outpatient clinic who underwent a laboratory test in October 1991 and had a total blood bilirubin level within the normal range.",
+  "type": "schema_mismatch",
+  "dropped": "patient.Admission"
+ },
+ {
+  "id": "v1201_thrombosis_prediction",
+  "question_id": 1201,
+  "db_id": "v1201_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "What percentage of patients who were born in 1980 and were diagnosed with RA are women?",
+  "type": "schema_mismatch",
+  "dropped": "patient.Diagnosis"
+ },
+ {
+  "id": "v1208_thrombosis_prediction",
+  "question_id": 1208,
+  "db_id": "v1208_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "Provide IDs for male patients with ALT glutamic pylvic transaminase (GPT) that have history of ALT glutamic pylvic transaminase (GPT) exceed the normal range.",
+  "type": "schema_mismatch",
+  "dropped": "patient.SEX"
+ },
+ {
+  "id": "v1220_thrombosis_prediction",
+  "question_id": 1220,
+  "db_id": "v1220_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "Provide all ID, sex and birthday of patients whose urea nitrogen (UN) just within the borderline of passing?",
+  "type": "schema_mismatch",
+  "dropped": "patient.SEX"
+ },
+ {
+  "id": "v1225_thrombosis_prediction",
+  "question_id": 1225,
+  "db_id": "v1225_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "List and group all patients by sex for total bilirubin (T-BIL) level not within the normal range.",
+  "type": "schema_mismatch",
+  "dropped": "patient.SEX"
+ },
+ {
+  "id": "v1247_thrombosis_prediction",
+  "question_id": 1247,
+  "db_id": "v1247_thrombosis_prediction",
+  "source_db": "thrombosis_prediction",
+  "question": "Among the male patients who have a normal level of white blood cells, how many of them have an abnormal fibrinogen level?",
+  "type": "schema_mismatch",
+  "dropped": "laboratory.FG"
+ },
+ {
+  "id": "v854_formula_1",
+  "question_id": 854,
+  "db_id": "v854_formula_1",
+  "source_db": "formula_1",
+  "question": "What is the coordinates location of the circuits for Australian grand prix?",
+  "type": "schema_mismatch",
+  "dropped": "circuits.lat"
+ },
+ {
+  "id": "v859_formula_1",
+  "question_id": 859,
+  "db_id": "v859_formula_1",
+  "source_db": "formula_1",
+  "question": "What's Bruno Senna's Q1 result in the qualifying race No. 354?",
+  "type": "schema_mismatch",
+  "dropped": "qualifying.q1"
+ },
+ {
+  "id": "v872_formula_1",
+  "question_id": 872,
+  "db_id": "v872_formula_1",
+  "source_db": "formula_1",
+  "question": "In the race No. 45, for the driver who had the Q3 time as 0:01:33, what is his abbreviated code?",
+  "type": "schema_mismatch",
+  "dropped": "qualifying.q3"
+ },
+ {
+  "id": "v877_formula_1",
+  "question_id": 877,
+  "db_id": "v877_formula_1",
+  "source_db": "formula_1",
+  "question": "For all the drivers who finished the game in race No. 872, who is the youngest?",
+  "type": "schema_mismatch",
+  "dropped": "drivers.forename"
+ },
+ {
+  "id": "v881_formula_1",
+  "question_id": 881,
+  "db_id": "v881_formula_1",
+  "source_db": "formula_1",
+  "question": "For the drivers who took part in the race in 1983/7/16, what's their race completion rate?",
+  "type": "schema_mismatch",
+  "dropped": "races.date"
+ },
+ {
+  "id": "v892_formula_1",
+  "question_id": 892,
+  "db_id": "v892_formula_1",
+  "source_db": "formula_1",
+  "question": "State the driver with the most points scored. Find his full name with that points.",
+  "type": "schema_mismatch",
+  "dropped": "drivers.forename"
+ },
+ {
+  "id": "v894_formula_1",
+  "question_id": 894,
+  "db_id": "v894_formula_1",
+  "source_db": "formula_1",
+  "question": "What is the best lap time recorded? List the driver and race with such recorded lap time.",
+  "type": "schema_mismatch",
+  "dropped": "laptimes.milliseconds"
+ },
+ {
+  "id": "v895_formula_1",
+  "question_id": 895,
+  "db_id": "v895_formula_1",
+  "source_db": "formula_1",
+  "question": "What is the average lap time for Lewis Hamilton in the 2009 Malaysian Grand Prix?",
+  "type": "schema_mismatch",
+  "dropped": "laptimes.milliseconds"
+ },
+ {
+  "id": "v901_formula_1",
+  "question_id": 901,
+  "db_id": "v901_formula_1",
+  "source_db": "formula_1",
+  "question": "Name the races along with its circuit name and location for f1 races hosted in September 2005.",
+  "type": "schema_mismatch",
+  "dropped": "races.name"
+ },
+ {
+  "id": "v906_formula_1",
+  "question_id": 906,
+  "db_id": "v906_formula_1",
+  "source_db": "formula_1",
+  "question": "Which was Lewis Hamilton first race? What was his points recorded for his first race event?",
+  "type": "schema_mismatch",
+  "dropped": "races.name"
+ }
+]

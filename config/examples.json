@@ -1,0 +1,51 @@
+{
+  "california_schools": [
+    {
+      "label": "Coded value",
+      "kind": "answer",
+      "question": "How many schools are exclusively virtual?"
+    },
+    {
+      "label": "Ranking",
+      "kind": "answer",
+      "question": "Which 3 schools have the highest average SAT math score?"
+    },
+    {
+      "label": "Aggregate",
+      "kind": "answer",
+      "question": "What is the average free meal count for K-12 students in Alameda county?"
+    },
+    {
+      "label": "Ambiguous metric",
+      "kind": "clarify",
+      "question": "What was the average student performance?"
+    },
+    {
+      "label": "Business rule",
+      "kind": "answer",
+      "question": "What is the poverty rate in Alameda county schools?"
+    },
+    {
+      "label": "Relative date",
+      "kind": "answer",
+      "question": "How many schools opened in the last calendar year?"
+    },
+    {
+      "label": "Not in the data",
+      "kind": "refuse",
+      "question": "What is the average teacher satisfaction score?"
+    }
+  ],
+  "debit_card_specializing": [
+    {
+      "label": "Coded value",
+      "kind": "answer",
+      "question": "How many more \"discount\" gas stations does the Czech Republic have compared to Slovakia?"
+    },
+    {
+      "label": "Currency",
+      "kind": "answer",
+      "question": "How many customers pay in EUR?"
+    }
+  ]
+}

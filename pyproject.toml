@@ -1,0 +1,10 @@
+[project]
+name = "t2sql-agent"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "sqlglot", "datasketch", "sentence-transformers", "scikit-learn",
+  "streamlit", "httpx", "pydantic", "datasets", "numpy", "pytest",
+]
+[tool.pytest.ini_options]
+testpaths = ["tests"]

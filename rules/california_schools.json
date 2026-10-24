@@ -1,0 +1,247 @@
+{
+  "db_id": "california_schools",
+  "conventions": {
+    "timezone": "America/Los_Angeles",
+    "reference_date": "data_max",
+    "reference_note": "The data is a 2014-15 snapshot, so relative dates count back from the latest date stored in schools.OpenDate, not from today.",
+    "date_column": "schools.OpenDate",
+    "fiscal_year_start_month": 7,
+    "week_start": "monday",
+    "end_exclusive": true
+  },
+  "vague_quantities": [
+    "average",
+    "avg",
+    "mean",
+    "total",
+    "sum",
+    "overall",
+    "overall average",
+    "score",
+    "scores",
+    "result",
+    "results",
+    "performance",
+    "none"
+  ],
+  "terms": {
+    "performance": [
+      "sat_math_avg",
+      "sat_reading_avg",
+      "sat_writing_avg",
+      "sat_1500_rate"
+    ],
+    "achievement": [
+      "sat_math_avg",
+      "sat_reading_avg",
+      "sat_writing_avg",
+      "sat_1500_rate"
+    ],
+    "academic results": [
+      "sat_math_avg",
+      "sat_reading_avg",
+      "sat_writing_avg",
+      "sat_1500_rate"
+    ],
+    "pass rate": [
+      "sat_1500_rate"
+    ],
+    "poverty": [
+      "frpm_rate"
+    ],
+    "low income": [
+      "frpm_rate"
+    ],
+    "disadvantaged": [
+      "frpm_rate"
+    ],
+    "enrollment": [
+      "enrollment_k12"
+    ]
+  },
+  "rules": {
+    "sat_math_avg": {
+      "metric": "Average SAT Math score",
+      "label": "Average SAT Math score",
+      "definition": "Mean of the school-level average SAT Math score.",
+      "formula": "AVG(satscores.AvgScrMath)",
+      "aggregation": "average of school averages (not weighted by test takers)",
+      "include": "rows where satscores.AvgScrMath IS NOT NULL",
+      "exclude": "schools with no reported SAT scores (NULL)",
+      "time_basis": "2014-15 school year snapshot (satscores has no date column)",
+      "tables": [
+        "satscores",
+        "schools"
+      ],
+      "joins": "satscores.cds = schools.CDSCode",
+      "columns": [
+        "satscores.AvgScrMath"
+      ],
+      "owner": "Assessment data team",
+      "version": "1.0",
+      "approval": "approved",
+      "keywords": [
+        "math",
+        "subject",
+        "sat"
+      ]
+    },
+    "sat_reading_avg": {
+      "metric": "Average SAT Reading score",
+      "label": "Average SAT Reading score",
+      "definition": "Mean of the school-level average SAT Reading score.",
+      "formula": "AVG(satscores.AvgScrRead)",
+      "aggregation": "average of school averages (not weighted by test takers)",
+      "include": "rows where satscores.AvgScrRead IS NOT NULL",
+      "exclude": "schools with no reported SAT scores (NULL)",
+      "time_basis": "2014-15 school year snapshot (satscores has no date column)",
+      "tables": [
+        "satscores",
+        "schools"
+      ],
+      "joins": "satscores.cds = schools.CDSCode",
+      "columns": [
+        "satscores.AvgScrRead"
+      ],
+      "owner": "Assessment data team",
+      "version": "1.0",
+      "approval": "approved",
+      "keywords": [
+        "reading",
+        "subject",
+        "sat"
+      ]
+    },
+    "sat_writing_avg": {
+      "metric": "Average SAT Writing score",
+      "label": "Average SAT Writing score",
+      "definition": "Mean of the school-level average SAT Writing score.",
+      "formula": "AVG(satscores.AvgScrWrite)",
+      "aggregation": "average of school averages (not weighted by test takers)",
+      "include": "rows where satscores.AvgScrWrite IS NOT NULL",
+      "exclude": "schools with no reported SAT scores (NULL)",
+      "time_basis": "2014-15 school year snapshot (satscores has no date column)",
+      "tables": [
+        "satscores",
+        "schools"
+      ],
+      "joins": "satscores.cds = schools.CDSCode",
+      "columns": [
+        "satscores.AvgScrWrite"
+      ],
+      "owner": "Assessment data team",
+      "version": "1.0",
+      "approval": "approved",
+      "keywords": [
+        "writing",
+        "subject",
+        "sat"
+      ]
+    },
+    "sat_1500_rate": {
+      "metric": "SAT pass rate (score 1500 or more)",
+      "label": "Share of SAT takers scoring 1500+",
+      "definition": "Test takers with a total SAT score of at least 1500, divided by all test takers.",
+      "formula": "CAST(SUM(satscores.NumGE1500) AS REAL) / SUM(satscores.NumTstTakr)",
+      "aggregation": "pooled ratio of sums (weighted by test takers); per school: CAST(NumGE1500 AS REAL) / NumTstTakr",
+      "include": "rows where satscores.NumTstTakr > 0",
+      "exclude": "schools with zero test takers or NULL NumGE1500",
+      "time_basis": "2014-15 school year snapshot (satscores has no date column)",
+      "tables": [
+        "satscores",
+        "schools"
+      ],
+      "joins": "satscores.cds = schools.CDSCode",
+      "columns": [
+        "satscores.NumGE1500",
+        "satscores.NumTstTakr"
+      ],
+      "owner": "Assessment data team",
+      "version": "1.0",
+      "approval": "approved",
+      "keywords": [
+        "1500",
+        "pass rate",
+        "sat"
+      ]
+    },
+    "frpm_rate": {
+      "metric": "Poverty rate (free or reduced-price meal eligibility)",
+      "label": "Share of K-12 students eligible for free or reduced-price meals",
+      "definition": "Students eligible for free or reduced-price meals divided by K-12 enrollment.",
+      "formula": "frpm.`Percent (%) Eligible FRPM (K-12)` per school; overall: SUM(frpm.`FRPM Count (K-12)`) / SUM(frpm.`Enrollment (K-12)`)",
+      "aggregation": "per school: stored percentage (0-1, not 0-100); across schools: ratio of sums",
+      "include": "rows where frpm.`Enrollment (K-12)` > 0",
+      "exclude": "rows with NULL FRPM count",
+      "time_basis": "Academic Year 2014-2015 (frpm.`Academic Year`)",
+      "tables": [
+        "frpm",
+        "schools"
+      ],
+      "joins": "frpm.CDSCode = schools.CDSCode",
+      "columns": [
+        "frpm.Percent (%) Eligible FRPM (K-12)",
+        "frpm.FRPM Count (K-12)",
+        "frpm.Enrollment (K-12)"
+      ],
+      "owner": "Nutrition programs office",
+      "version": "1.1",
+      "approval": "approved",
+      "keywords": [
+        "poverty",
+        "free meal",
+        "frpm",
+        "low income"
+      ]
+    },
+    "enrollment_k12": {
+      "metric": "Student enrollment (K-12)",
+      "label": "K-12 enrollment",
+      "definition": "Number of students enrolled in grades K-12 on census day.",
+      "formula": "SUM(frpm.`Enrollment (K-12)`)",
+      "aggregation": "sum across schools",
+      "include": "all schools in frpm",
+      "exclude": "none",
+      "time_basis": "Academic Year 2014-2015 (frpm.`Academic Year`)",
+      "tables": [
+        "frpm",
+        "schools"
+      ],
+      "joins": "frpm.CDSCode = schools.CDSCode",
+      "columns": [
+        "frpm.Enrollment (K-12)"
+      ],
+      "owner": "Enrollment office",
+      "version": "1.0",
+      "approval": "approved",
+      "keywords": [
+        "enrollment",
+        "enrolled"
+      ]
+    },
+    "graduation_rate": {
+      "metric": "Graduation rate",
+      "label": "Graduation rate",
+      "definition": "Four-year cohort graduation rate.",
+      "formula": "graduates / cohort",
+      "aggregation": "ratio",
+      "include": "-",
+      "exclude": "-",
+      "time_basis": "cohort year",
+      "tables": [
+        "graduation"
+      ],
+      "joins": "",
+      "columns": [
+        "graduation.Rate"
+      ],
+      "owner": "Assessment data team",
+      "version": "0.1",
+      "approval": "draft",
+      "keywords": [
+        "graduation"
+      ]
+    }
+  },
+  "max_clarify_rounds": 3
+}

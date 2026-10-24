@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analyst · Text-to-SQL</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%237c5cf0'/%3E%3Cpath d='M9 11h14M9 16h14M9 21h9' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="shell">
+    <!-- ─── Top bar ─────────────────────────────────────────── -->
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open sidebar"><span data-icon="menu"></span></button>
+      <div class="brand" title="The analyst that shows its work and knows when to say no">
+        <span class="brand-mark" data-icon="logo"></span><b>Analyst</b>
+      </div>
+
+      <div class="db-pick">
+        <button class="db-card" id="dbCard" aria-haspopup="listbox" aria-expanded="false">
+          <span class="db-avatar" id="dbAvatar"></span>
+          <span class="db-name" id="dbName">Loading…</span>
+          <span class="db-sub" id="dbSub"></span>
+          <span class="chev" data-icon="chevronDown"></span>
+        </button>
+        <div class="db-menu" id="dbMenu" role="listbox" hidden></div>
+      </div>
+
+      <nav class="tabs nav-tabs" aria-label="Views">
+        <button class="tab is-active" data-view="ask"><span data-icon="grid"></span>Ask</button>
+        <button class="tab" data-view="results"><span data-icon="chart"></span>Results<span class="tab-badge" id="resultsBadge"></span></button>
+        <button class="tab" data-view="data"><span data-icon="table"></span>Data</button>
+      </nav>
+
+      <div class="health" id="health" aria-live="polite" title="Every model runs on this machine. Nothing leaves it.">
+        <span class="hide-sm"><span data-icon="shield"></span>Local · open-weight</span>
+        <span class="sep hide-sm"></span>
+        <span class="health-item" id="hWriter"><i class="dot"></i>Writer</span>
+        <span class="health-item" id="hJudge"><i class="dot"></i>Judge</span>
+      </div>
+    </header>
+
+    <div class="body">
+      <!-- ─── Sidebar ─────────────────────────────────────────── -->
+      <aside class="sidebar" id="sidebar">
+        <button class="new-q" id="newQuestion" title="New question (N)"><span data-icon="plus"></span>New question</button>
+        <div class="side-section">
+          <div class="side-label">Try asking</div>
+          <div id="examples"></div>
+        </div>
+        <div class="side-section side-history">
+          <div class="side-label">History<button class="side-clear" id="clearHistory">Clear</button></div>
+          <div id="history"></div>
+        </div>
+      </aside>
+
+      <!-- ─── Main ─────────────────────────────────────────────── -->
+      <main class="main" id="main">
+
+        <!-- ASK VIEW -->
+        <section class="view view-ask" id="view-ask">
+          <form class="composer" id="composer" autocomplete="off">
+            <span class="composer-icon" data-icon="sparkle"></span>
+            <textarea id="question" rows="1" placeholder="Ask anything about this database…" aria-label="Question"></textarea>
+            <div class="composer-actions">
+              <div class="seg" role="radiogroup" aria-label="How careful should it be?">
+                <button type="button" class="seg-btn is-active" data-mode="product" role="radio" aria-checked="true" title="May refuse or ask you a question instead of guessing">Careful</button>
+                <button type="button" class="seg-btn" data-mode="benchmark" role="radio" aria-checked="false" title="Always returns its best guess (used for BIRD scoring)">Always answer</button>
+              </div>
+              <label class="attempts" title="SQL attempts per question">
+                <select id="attempts" aria-label="Attempts per question">
+                  <option value="1">1 attempt</option><option value="3">3 attempts</option><option value="5" selected>5 attempts</option>
+                </select>
+              </label>
+              <button type="button" class="icon-btn" id="cancelBtn" title="Cancel" hidden><span data-icon="x"></span></button>
+              <button type="submit" class="btn-primary" id="askBtn"><span>Ask</span><kbd>⌘↵</kbd></button>
+            </div>
+          </form>
+          <div class="notice" id="notice" hidden></div>
+
+          <div class="workspace">
+            <div class="col-left">
+              <article class="card card-answer" id="cardAnswer">
+                <header><h3>Answer</h3><span class="card-meta" id="answerMeta"></span></header>
+                <div class="card-body" id="answerBody"></div>
+              </article>
+              <article class="card" id="cardConfidence">
+                <header><h3>Confidence</h3><span class="card-meta" id="confMeta"></span></header>
+                <div class="card-body" id="confBody"></div>
+              </article>
+            </div>
+
+            <div class="card col-right">
+              <div class="tabbar">
+                <div class="tabs" role="tablist">
+                  <button class="tab is-active" role="tab" data-tab="pipeline"><span data-icon="diagram"></span>Pipeline</button>
+                  <button class="tab" role="tab" data-tab="sql"><span data-icon="code"></span>SQL</button>
+                  <button class="tab" role="tab" data-tab="table"><span data-icon="table"></span>Result</button>
+                  <button class="tab" role="tab" data-tab="trace"><span data-icon="list"></span>Trace</button>
+                </div>
+                <span class="tab-stats" id="stats"></span>
+              </div>
+              <div class="tabpanes">
+                <div class="pane is-active" data-pane="pipeline">
+                  <div class="canvas" id="canvas">
+                    <div class="phase-rail" id="phaseRail"></div>
+                    <div class="flow" id="flow"></div>
+                    <svg class="wires" id="wires" aria-hidden="true"></svg>
+                  </div>
+                </div>
+                <div class="pane" data-pane="sql" id="sqlPane"></div>
+                <div class="pane" data-pane="table" id="tablePane"></div>
+                <div class="pane" data-pane="trace" id="tracePane"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULTS VIEW -->
+        <section class="view view-scroll" id="view-results" hidden>
+          <div class="view-head">
+            <div>
+              <h2>Does it work? The measured numbers</h2>
+              <p class="muted">BIRD Mini-Dev, fixed 150-question reporting split (seed 42). Accuracy uses “Always answer” runs only.</p>
+            </div>
+            <button class="btn-ghost" id="refreshResults"><span data-icon="refresh"></span>Refresh</button>
+          </div>
+          <div id="resultsBody"></div>
+        </section>
+
+        <!-- DATA VIEW -->
+        <section class="view view-scroll" id="view-data" hidden>
+          <div class="view-head">
+            <div>
+              <h2 id="dataTitle">Data profile</h2>
+              <p class="muted">Built automatically in seconds: types, empty values, codes and messy formats. This is the context the agent reads before writing SQL.</p>
+            </div>
+            <label class="search">
+              <span data-icon="search"></span>
+              <input id="colSearch" type="search" placeholder="Filter columns…" autocomplete="off">
+            </label>
+          </div>
+          <div id="dataBody"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <dialog class="dialog" id="shortcuts">
+    <h3>Keyboard</h3>
+    <dl>
+      <dt><kbd>⌘</kbd><kbd>↵</kbd></dt><dd>Ask</dd>
+      <dt><kbd>⌘</kbd><kbd>K</kbd></dt><dd>Focus the question</dd>
+      <dt><kbd>N</kbd></dt><dd>New question</dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Ask · Results · Data</dd>
+      <dt><kbd>?</kbd></dt><dd>This list</dd>
+    </dl>
+    <form method="dialog"><button class="btn-primary">Got it</button></form>
+  </dialog>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

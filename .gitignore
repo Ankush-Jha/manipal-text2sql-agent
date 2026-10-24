@@ -8,3 +8,7 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 .env
+/baseline_report_*.jsonl
+results/*shard*
+results/agent_*
+results/summary.*
